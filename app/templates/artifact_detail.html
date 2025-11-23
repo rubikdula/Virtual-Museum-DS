@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+<div class="container-fluid px-5 py-5 bg-white">
+    <div class="row">
+        <div class="col-md-8">
+            {% if artifact.media_type == 'image' %}
+                <img src="{{ artifact.media_url }}" class="img-fluid w-100 mb-4" alt="{{ artifact.title }}">
+            {% elif artifact.media_type == '3d_model' %}
+                <div class="ratio ratio-4x3 mb-4 bg-light border">
+                    <model-viewer 
+                        src="{{ artifact.media_url }}" 
+                        alt="{{ artifact.title }}"
+                        auto-rotate 
+                        camera-controls 
+                        ar
+                        shadow-intensity="1"
+                        style="width: 100%; height: 100%;"
+                        background-color="#f8f9fa">
+                    </model-viewer>
+                </div>
+            {% elif artifact.media_type == 'video_url' %}
+                <div class="ratio ratio-16x9 mb-4">
+                    <iframe src="{{ artifact.media_url }}" allowfullscreen></iframe>
+                </div>
+            {% else %}
+                <div class="p-5 bg-light text-center mb-4">
+                    <a href="{{ artifact.media_url }}" target="_blank" class="btn btn-primary">View {{ artifact.media_type }}</a>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-4 ps-md-5">
+            <div class="sticky-top" style="top: 2rem;">
+                <h1 class="display-4 fw-bold mb-3" style="letter-spacing: -2px;">{{ artifact.title }}</h1>
+                
+                <div class="mb-4">
+                    <span class="text-uppercase fw-bold text-muted">{{ artifact.category }}</span>
+                    {% if artifact.year %}
+                        <span class="text-muted mx-2">|</span>
+                        <span class="fw-bold">{{ artifact.year }}</span>
+                    {% endif %}
+                </div>
+
+                <p class="lead mb-4">{{ artifact.short_description }}</p>
+                
+                <div class="mb-5">
+                    {{ artifact.long_description or artifact.short_description }}
+                </div>
+
+                <div class="d-grid gap-2">
+                    <form action="/artifacts/{{ artifact.id }}/like" method="post">
+                        {% if is_liked %}
+                            <button type="submit" class="btn btn-outline-primary w-100 btn-lg">
+                                Unlike Artifact ({{ artifact.likes_count }})
+                            </button>
+                        {% else %}
+                            <button type="submit" class="btn btn-primary w-100 btn-lg">
+                                Like Artifact ({{ artifact.likes_count }})
+                            </button>
+                        {% endif %}
+                    </form>
+                    
+                    {% if user and user.id == artifact.creator_id %}
+                        <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Are you sure?');">
+                            <button type="submit" class="btn btn-outline-danger w-100">Delete Artifact</button>
+                        </form>
+                    {% endif %}
+                </div>
+
+                <div class="mt-5 pt-4 border-top">
+                    <p class="small text-muted mb-1">Uploaded by <strong>{{ artifact.creator.username }}</strong></p>
+                    <p class="small text-muted">{{ artifact.views_count }} views</p>
+                    
+                    {% if artifact.tags %}
+                    <div class="mt-3">
+                        {% for tag in artifact.tags.split(',') %}
+                            <span class="badge bg-light text-dark border rounded-0">{{ tag.strip() }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

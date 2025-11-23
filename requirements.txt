@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+jinja2
+python-multipart
+python-jose[cryptography]
+passlib[argon2]
+aiofiles
+email-validator
+websockets

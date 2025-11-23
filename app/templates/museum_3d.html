@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Virtual Museum 3D</title>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Overlay UI */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        .hud-btn {
+            pointer-events: auto;
+            background: #000;
+            color: #fff;
+            padding: 15px 30px;
+            text-decoration: none;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .hud-btn:hover {
+            background: #ffcc00; /* Yellow */
+            color: #000;
+        }
+
+        #controls-info {
+            position: absolute;
+            bottom: 30px;
+            left: 30px;
+            color: #000;
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border: 1px solid #000;
+        }
+
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #000;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div id="ui-layer">
+        <div style="position: absolute; top: 30px; left: 30px;">
+            <a href="/" class="hud-btn">
+                &larr; Exit Gallery
+            </a>
+            <button onclick="event.stopPropagation(); startAiTour()" class="hud-btn" style="margin-left: 10px; background: #2d9183;">
+                🤖 Start AI Tour
+            </button>
+            <button id="audio-btn" onclick="event.stopPropagation(); toggleAudio()" class="hud-btn" style="margin-left: 10px; background: #555;">
+                🔇 Enable Audio
+            </button>
+        </div>
+
+        <!-- Time Travel HUD -->
+        <div style="position: absolute; top: 30px; right: 30px; text-align: right;">
+            <h3 style="color: white; font-family: 'Helvetica Neue', sans-serif; text-transform: uppercase; margin: 0 0 10px 0; text-shadow: 0 0 10px black;">Time Travel Mode</h3>
+            <div>
+                <button onclick="setEra('Ancient')" class="hud-btn" style="padding: 10px 15px; font-size: 0.8rem;">Ancient</button>
+                <button onclick="setEra('Medieval')" class="hud-btn" style="padding: 10px 15px; font-size: 0.8rem;">Medieval</button>
+                <button onclick="setEra('Industrial')" class="hud-btn" style="padding: 10px 15px; font-size: 0.8rem;">Industrial</button>
+                <button onclick="setEra('Modern')" class="hud-btn" style="padding: 10px 15px; font-size: 0.8rem;">Modern</button>
+                <button onclick="setEra('Future')" class="hud-btn" style="padding: 10px 15px; font-size: 0.8rem;">Future</button>
+            </div>
+            <div id="era-indicator" style="color: #ffcc00; font-weight: bold; margin-top: 5px; font-family: 'Helvetica Neue', sans-serif;">Current Era: Modern</div>
+        </div>
+        
+        <div id="ai-guide-box" style="display: none; position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 600px; max-width: 90%; background: rgba(0, 0, 0, 0.8); color: white; padding: 20px; border-radius: 10px; font-family: 'Helvetica Neue', sans-serif; text-align: center; border: 2px solid #2d9183; pointer-events: auto;">
+            <h3 style="margin: 0 0 10px 0; color: #2d9183; text-transform: uppercase;">AI Curator</h3>
+            
+            <div style="margin-bottom: 10px;">
+                <label style="cursor: pointer; font-size: 0.9rem; color: #ccc;">
+                    <input type="checkbox" id="ai-tts-toggle" style="margin-right: 5px;"> Enable Voice Guide
+                </label>
+            </div>
+
+            <p id="ai-text" style="font-size: 1.2rem; line-height: 1.4;">Loading tour...</p>
+            <button onclick="event.stopPropagation(); nextTourStop()" id="ai-next-btn" style="margin-top: 10px; background: white; color: black; border: none; padding: 5px 15px; font-weight: bold; cursor: pointer;">Next &rarr;</button>
+        </div>
+
+        <div id="controls-info">
+            WASD to Move &bull; Mouse to Look &bull; Click to Interact
+            <br><small style="font-weight: 400; color: #555;">Press ESC to unlock cursor</small>
+        </div>
+
+        <div id="crosshair"></div>
+
+        <!-- Artifact Detail Popup -->
+        <div id="artifact-popup" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 3rem; width: 600px; max-width: 90%; border: 4px solid black; z-index: 2000; text-align: center; pointer-events: auto;">
+            <button onclick="closePopup()" style="position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 2rem; cursor: pointer; font-weight: bold;">&times;</button>
+            
+            <h2 id="popup-title" style="font-family: 'Helvetica Neue', sans-serif; font-weight: 900; text-transform: uppercase; font-size: 2rem; margin-bottom: 1.5rem;">Title</h2>
+            
+            <div style="background: #f4f4f4; padding: 1rem; margin-bottom: 1.5rem;">
+                <img id="popup-image" src="" style="max-width: 100%; max-height: 300px; object-fit: contain; display: block; margin: 0 auto;">
+            </div>
+            
+            <p id="popup-desc" style="font-family: 'Helvetica Neue', sans-serif; font-size: 1.1rem; margin-bottom: 1.5rem; line-height: 1.5;">Description</p>
+            
+            <div style="margin-bottom: 2rem; font-weight: bold; font-family: 'Helvetica Neue', sans-serif;">
+                <span style="color: #ffcc00;">★</span> <span id="popup-likes">Likes: 0</span>
+            </div>
+            
+            <div>
+                <a id="popup-link" href="#" class="hud-btn">View Full Details</a>
+            </div>
+
+            <div id="ai-analysis-section" style="margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; text-align: left; font-family: 'Helvetica Neue', sans-serif;">
+                <h3 style="font-family: 'Helvetica Neue', sans-serif; text-transform: uppercase; color: #2d9183; font-size: 1.2rem;">AI Knowledge Expander</h3>
+                <div id="ai-loading" style="display: none; color: #666; font-style: italic;">Analyzing artifact...</div>
+                <div id="ai-content" style="display: none; font-size: 0.9rem;">
+                    <p style="margin: 5px 0;"><strong>Historical Fact:</strong> <span id="ai-fact"></span></p>
+                    <p style="margin: 5px 0;"><strong>Related Inventions:</strong></p>
+                    <ul id="ai-inventions" style="margin: 5px 0; padding-left: 20px;"></ul>
+                    <p style="margin: 5px 0;"><strong>Similar Artifacts:</strong></p>
+                    <ul id="ai-similar" style="margin: 5px 0; padding-left: 20px;"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function closePopup() {
+            document.getElementById('artifact-popup').style.display = 'none';
+            // Optional: Request pointer lock again if desired, but usually better to let user click to resume
+            const canvas = document.querySelector('a-scene').canvas;
+            if (canvas) canvas.requestPointerLock();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- MULTIPLAYER LOGIC ---
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}/ws/museum`;
+            
+            const ws = new WebSocket(wsUrl);
+            
+            // Get user info safely
+            const myUsername = "{{ username }}";
+            const myTotalLikes = {{ total_likes|default(0) }};
+            const myId = "user_" + Math.random().toString(36).substr(2, 9); 
+            const otherPlayers = {}; 
+
+            // Debug Overlay
+            const debugText = document.createElement('div');
+            debugText.style.position = 'absolute';
+            debugText.style.top = '10px';
+            debugText.style.right = '10px';
+            debugText.style.color = 'lime';
+            debugText.style.zIndex = '9999';
+            debugText.style.fontFamily = 'monospace';
+            debugText.innerHTML = 'Connecting to server...';
+            document.body.appendChild(debugText);
+
+            ws.onopen = () => {
+                console.log("Connected to 3D Museum Server");
+                debugText.innerHTML = 'Connected to Multiplayer Server<br>Waiting for other players...';
+            };
+            
+            ws.onerror = (error) => {
+                console.error("WebSocket Error:", error);
+                debugText.innerHTML = 'Connection Error (Check Console)';
+                debugText.style.color = 'red';
+            };
+            
+            ws.onclose = (event) => {
+                console.log("WebSocket Closed:", event);
+                debugText.innerHTML = 'Disconnected from Server';
+                debugText.style.color = 'orange';
+            };
+
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    // console.log("Received data:", data); 
+                    
+                    // If the message is about another user
+                    if (data.userId && data.userId !== myId) {
+                        updateOtherPlayer(data);
+                        debugText.innerHTML = `Connected<br>Players nearby: ${Object.keys(otherPlayers).length}`;
+                    }
+                } catch (e) {
+                    console.error("Error parsing message:", e);
+                }
+            };
+
+            function updateOtherPlayer(data) {
+                const scene = document.querySelector('a-scene');
+                if (!scene) return;
+
+                // If we haven't seen this player before, create an avatar for them
+                if (!otherPlayers[data.userId]) {
+                    console.log("New player joined:", data.username);
+                    const avatar = document.createElement('a-entity');
+                    
+                    // Simple avatar: A floating sphere and a cylinder body
+                    avatar.innerHTML = `
+                        <a-sphere position="0 1.7 0" radius="0.3" color="${data.color || 'red'}"></a-sphere>
+                        <a-cylinder position="0 0.75 0" radius="0.3" height="1.5" color="${data.color || 'red'}"></a-cylinder>
+                        <a-text value="${data.username || 'Visitor'}\nLikes: ${data.likes || 0}" position="0 2.4 0" align="center" side="double" color="white" width="4"></a-text>
+                    `;
+                    
+                    scene.appendChild(avatar);
+                    otherPlayers[data.userId] = avatar;
+                }
+
+                // Update their position and rotation
+                const avatar = otherPlayers[data.userId];
+                if (data.position) avatar.setAttribute('position', data.position);
+                if (data.rotation) {
+                    // Only rotate around Y axis (left/right) to keep them upright
+                    avatar.setAttribute('rotation', `0 ${data.rotation.y} 0`);
+                }
+            }
+
+            // Send MY position to server every 50ms
+            setInterval(() => {
+                const rig = document.querySelector('#my-camera-rig');
+                const camera = document.querySelector('#my-camera');
+
+                if (rig && camera && ws.readyState === WebSocket.OPEN) {
+                    // Get position as an object to ensure it serializes correctly
+                    const rawPos = rig.getAttribute('position');
+                    const rawRot = camera.getAttribute('rotation');
+
+                    if (rawPos && rawRot) {
+                        const pos = {x: rawPos.x, y: rawPos.y, z: rawPos.z};
+                        const rot = {x: rawRot.x, y: rawRot.y, z: rawRot.z};
+                        
+                        ws.send(JSON.stringify({
+                            userId: myId,
+                            username: myUsername,
+                            likes: myTotalLikes,
+                            position: pos,
+                            rotation: rot,
+                            color: '#4CC3D9' 
+                        }));
+                    }
+                }
+            }, 50);
+        });
+    </script>
+
+    <a-scene>
+        <!-- Environment: Starry Night with Custom Terrain -->
+        <a-entity id="env" environment="preset: starry; groundColor: #0a0a0a; grid: 1x1; gridColor: #333; lighting: distant"></a-entity>
+
+        <!-- Custom Lighting -->
+        <a-light id="ambient-light" type="ambient" color="#444" intensity="0.4"></a-light>
+        <a-light id="point-light" type="point" position="0 10 0" intensity="0.6" color="#fff"></a-light>
+
+        <!-- My Player (Camera) with Pointer Lock -->
+        <a-entity id="my-camera-rig" position="0 0 8" movement-controls="speed: 0.3">
+            <a-entity id="my-camera" camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
+                <!-- White cursor for dark environment -->
+                <a-cursor color="#fff" scale="0.5 0.5 0.5" raycaster="objects: .clickable"></a-cursor>
+            </a-entity>
+        </a-entity>
+
+        <!-- Floor (Dark Reflective Platform) -->
+        <a-plane position="0 0.01 0" rotation="-90 0 0" width="200" height="200" color="#050505" roughness="0.1" metalness="0.8" opacity="0.9"></a-plane>
+
+        <!-- Dynamic Artifacts Container -->
+        <a-entity id="gallery-container"></a-entity>
+
+    </a-scene>
+
+    <script>
+        // --- AUDIO SYSTEM (Real Audio Files) ---
+        let ambientAudio = new Audio();
+        ambientAudio.loop = true;
+        let isAudioEnabled = false;
+        let currentSpeakingArtifactId = null;
+
+        // Sound Library (Internet Archive Public Domain)
+        const ambientTracks = {
+            'Ancient': 'https://archive.org/download/wind-sound-effect/Wind%20Sound%20Effect.mp3',
+            'Medieval': 'https://archive.org/download/forest-birds-sound-effect/Forest%20Birds%20Sound%20Effect.mp3',
+            'Industrial': 'https://archive.org/download/steam-train-sound-effect/Steam%20Train%20Sound%20Effect.mp3',
+            'Modern': 'https://archive.org/download/city-traffic-sound-effect/City%20Traffic%20Sound%20Effect.mp3',
+            'Future': 'https://archive.org/download/space-ambient-music/Space%20Ambient%20Music.mp3'
+        };
+
+        function initAudio() {
+            // No special context needed for HTML5 Audio, just state management
+            console.log("Audio System Initialized");
+        }
+
+        function toggleAudio() {
+            if (!isAudioEnabled) {
+                isAudioEnabled = true;
+                document.getElementById('audio-btn').innerText = "🔊 Mute Audio";
+                document.getElementById('audio-btn').style.background = "#2d9183";
+                
+                // Start playing current era sound
+                updateAmbience(currentEra);
+            } else {
+                isAudioEnabled = false;
+                document.getElementById('audio-btn').innerText = "🔇 Enable Audio";
+                document.getElementById('audio-btn').style.background = "#555";
+                
+                ambientAudio.pause();
+                window.speechSynthesis.cancel(); // Stop talking
+            }
+        }
+
+        function updateAmbience(era) {
+            if (!isAudioEnabled) return;
+
+            const newTrack = ambientTracks[era] || ambientTracks['Modern'];
+            
+            // Only change if the track is different to avoid restarting
+            if (ambientAudio.src !== newTrack) {
+                // Fade out effect (simple volume ramp)
+                let vol = 1.0;
+                const fadeOut = setInterval(() => {
+                    if (vol > 0.1) {
+                        vol -= 0.1;
+                        ambientAudio.volume = vol;
+                    } else {
+                        clearInterval(fadeOut);
+                        
+                        // Change track and fade in
+                        ambientAudio.src = newTrack;
+                        ambientAudio.play().catch(e => console.log("Audio play failed:", e));
+                        
+                        let volIn = 0.0;
+                        const fadeIn = setInterval(() => {
+                            if (volIn < 0.5) { // Max volume 0.5 for ambience
+                                volIn += 0.05;
+                                ambientAudio.volume = volIn;
+                            } else {
+                                clearInterval(fadeIn);
+                            }
+                        }, 100);
+                    }
+                }, 100);
+            }
+        }
+
+        // --- LOAD ARTIFACTS FROM API ---
+        let currentEra = 'Modern';
+        let artifactLocations = []; // Store locations for proximity check
+
+        function loadArtifacts(era) {
+            const container = document.querySelector('#gallery-container');
+            // Clear existing artifacts
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+            
+            artifactLocations = []; // Reset locations
+
+            let url = '/artifacts_json';
+            if (era) {
+                url += `?era=${era}`;
+            }
+
+            fetch(url) 
+                .then(res => res.json())
+                .then(artifacts => {
+                    // Gallery Layout: A long corridor or circular arrangement
+                    // Let's do a "Zig Zag" or staggered corridor
+                    
+                    if (artifacts.length === 0) {
+                        const msg = document.createElement('a-text');
+                        msg.setAttribute('value', `No artifacts found in the ${era} era.`);
+                        msg.setAttribute('position', '0 2 -3');
+                        msg.setAttribute('align', 'center');
+                        msg.setAttribute('color', 'white');
+                        container.appendChild(msg);
+                        return;
+                    }
+
+                    artifacts.forEach((art, index) => {
+                        // Calculate position
+                        // Staggered: Left (-3), Right (3), Left (-3)...
+                        // Moving forward in -Z direction
+                        const side = index % 2 === 0 ? -3 : 3;
+                        const zPos = -index * 4; // 4 meters apart
+                        console.log(`Placing artifact ${index}: ${art.title} at ${side} 0 ${zPos}`);
+                        const rotation = index % 2 === 0 ? 45 : -45; // Angled towards center path
+                        
+                        // Store location for proximity check
+                        artifactLocations.push({
+                            id: art.id,
+                            x: side,
+                            z: zPos,
+                            title: art.title,
+                            description: art.description,
+                            spotlightId: `spot-${index}`
+                        });
+
+                        // Create a "Pedestal/Wall" Group
+                        const group = document.createElement('a-entity');
+                        group.setAttribute('position', `${side} 0 ${zPos}`);
+                        group.setAttribute('rotation', `0 ${rotation} 0`);
+
+                        // 1. The Wall/Stand (Sleek Dark Monolith)
+                        const wall = document.createElement('a-box');
+                        const wallId = `wall-${index}`;
+                        wall.setAttribute('id', wallId);
+                        wall.setAttribute('width', '3.2');
+                        wall.setAttribute('height', '4.5');
+                        wall.setAttribute('depth', '0.3');
+                        
+                        // Era-specific styling for walls
+                        if (era === 'Ancient') {
+                            wall.setAttribute('color', '#8B4513'); // SaddleBrown
+                            wall.setAttribute('roughness', '1');
+                        } else if (era === 'Medieval') {
+                            wall.setAttribute('color', '#708090'); // SlateGray
+                            wall.setAttribute('roughness', '0.8');
+                        } else if (era === 'Industrial') {
+                            wall.setAttribute('color', '#A52A2A'); // Brown (Brick-ish)
+                            wall.setAttribute('roughness', '0.9');
+                        } else if (era === 'Future') {
+                            wall.setAttribute('color', '#000000');
+                            wall.setAttribute('metalness', '0.9');
+                            wall.setAttribute('roughness', '0.1');
+                            wall.setAttribute('opacity', '0.8');
+                        } else {
+                            // Modern
+                            wall.setAttribute('color', '#1a1a1a');
+                            wall.setAttribute('roughness', '0.5');
+                            wall.setAttribute('metalness', '0.2');
+                        }
+
+                        wall.setAttribute('position', '0 2 0');
+                        wall.setAttribute('shadow', 'cast: true; receive: true');
+                        group.appendChild(wall);
+
+                        // 2. The Artwork Image
+                        const image = document.createElement('a-image');
+                        image.setAttribute('src', art.media_url || 'https://via.placeholder.com/300');
+                        image.setAttribute('position', '0 2 0.16'); // Slightly in front of wall
+                        image.setAttribute('width', '2.2');
+                        image.setAttribute('height', '2.2');
+                        image.setAttribute('class', 'clickable');
+                        
+                        // Interaction
+                        image.addEventListener('click', () => {
+                            // Exit pointer lock to navigate
+                            document.exitPointerLock();
+                            
+                            // Populate Popup
+                            document.getElementById('popup-title').innerText = art.title;
+                            document.getElementById('popup-image').src = art.media_url;
+                            document.getElementById('popup-desc').innerText = art.description || "No description available.";
+                            document.getElementById('popup-likes').innerText = `Likes: ${art.likes}`;
+                            document.getElementById('popup-link').href = `/artifact/${art.id}`;
+                            
+                            // Show Popup
+                            document.getElementById('artifact-popup').style.display = 'block';
+
+                            // AI Analysis Logic
+                            const aiLoading = document.getElementById('ai-loading');
+                            const aiContent = document.getElementById('ai-content');
+                            const aiFact = document.getElementById('ai-fact');
+                            const aiInventions = document.getElementById('ai-inventions');
+                            const aiSimilar = document.getElementById('ai-similar');
+                            
+                            aiLoading.style.display = 'block';
+                            aiContent.style.display = 'none';
+                            aiFact.innerText = '';
+                            aiInventions.innerHTML = '';
+                            aiSimilar.innerHTML = '';
+                            
+                            fetch(`/api/ai/enrich/${art.id}`)
+                                .then(res => res.json())
+                                .then(data => {
+                                    aiLoading.style.display = 'none';
+                                    aiContent.style.display = 'block';
+                                    
+                                    // Fact
+                                    aiFact.innerText = data.ai_analysis.historical_connection;
+                                    
+                                    // Inventions
+                                    if (data.ai_analysis.related_inventions) {
+                                        data.ai_analysis.related_inventions.forEach(inv => {
+                                            const li = document.createElement('li');
+                                            li.innerText = inv;
+                                            aiInventions.appendChild(li);
+                                        });
+                                    }
+                                    
+                                    // Similar
+                                    if (data.similar_artifacts) {
+                                        data.similar_artifacts.forEach(sim => {
+                                            const li = document.createElement('li');
+                                            li.innerHTML = `<b>${sim.title}</b> (${sim.era}) - ${(sim.similarity * 100).toFixed(0)}% match`;
+                                            aiSimilar.appendChild(li);
+                                        });
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error(err);
+                                    aiLoading.innerText = "Failed to load AI analysis.";
+                                });
+                        });
+                        
+                        // Hover effect (scale up)
+                        image.addEventListener('mouseenter', () => {
+                            image.setAttribute('scale', '1.05 1.05 1.05');
+                        });
+                        image.addEventListener('mouseleave', () => {
+                            image.setAttribute('scale', '1 1 1');
+                        });
+
+                        group.appendChild(image);
+
+                        // 3. Info Label (Title & Likes)
+                        const text = document.createElement('a-text');
+                        text.setAttribute('value', `${art.title}\nLikes: ${art.likes}`);
+                        text.setAttribute('color', '#ffffff');
+                        text.setAttribute('align', 'center');
+                        text.setAttribute('position', '0 0.8 0.16');
+                        text.setAttribute('width', '4');
+                        text.setAttribute('font', 'kelsonsans'); // Cleaner font
+                        group.appendChild(text);
+
+                        // 4. Spotlight for this art
+                        const spot = document.createElement('a-light');
+                        spot.setAttribute('id', `spot-${index}`); // ID for dynamic lighting
+                        spot.setAttribute('type', 'spot');
+                        
+                        // Era-specific lighting
+                        if (era === 'Ancient') {
+                            spot.setAttribute('color', '#ffaa00'); // Fire/Torch
+                        } else if (era === 'Future') {
+                            spot.setAttribute('color', '#00ffff'); // Cyan
+                        } else {
+                            spot.setAttribute('color', '#fff');
+                        }
+
+                        spot.setAttribute('intensity', '0.8');
+                        spot.setAttribute('angle', '40');
+                        spot.setAttribute('penumbra', '0.3');
+                        spot.setAttribute('position', '0 4 2'); // Above and in front
+                        spot.setAttribute('target', `#${wallId}`);
+                        group.appendChild(spot);
+
+                        container.appendChild(group);
+                    });
+                });
+        }
+
+        function setEra(era) {
+            currentEra = era;
+            document.getElementById('era-indicator').innerText = `Current Era: ${era}`;
+            
+            // Update Audio Ambience
+            updateAmbience(era);
+
+            const env = document.getElementById('env');
+            const ambient = document.getElementById('ambient-light');
+            const point = document.getElementById('point-light');
+
+            // Define environment settings
+            let envSettings = {};
+
+            if (era === 'Ancient') {
+                envSettings = {preset: 'egypt', groundColor: '#C2B280', lighting: 'none'};
+                ambient.setAttribute('color', '#ffaa00');
+                ambient.setAttribute('intensity', '0.2');
+                point.setAttribute('color', '#ffaa00');
+                point.setAttribute('intensity', '0.8');
+            } else if (era === 'Medieval') {
+                envSettings = {preset: 'forest', groundColor: '#2E8B57', lighting: 'none'};
+                ambient.setAttribute('color', '#aaa');
+                ambient.setAttribute('intensity', '0.3');
+                point.setAttribute('color', '#fff');
+                point.setAttribute('intensity', '0.5');
+            } else if (era === 'Industrial') {
+                envSettings = {preset: 'arches', fog: 0.6, groundColor: '#555', lighting: 'none'};
+                ambient.setAttribute('color', '#888');
+                ambient.setAttribute('intensity', '0.4');
+                point.setAttribute('color', '#ffccaa'); // Smoggy sun
+                point.setAttribute('intensity', '0.6');
+            } else if (era === 'Future') {
+                envSettings = {preset: 'tron', grid: '1x1', gridColor: '#00ff00', lighting: 'none'};
+                ambient.setAttribute('color', '#000033');
+                ambient.setAttribute('intensity', '0.5');
+                point.setAttribute('color', '#00ffff');
+                point.setAttribute('intensity', '0.8');
+            } else {
+                // Modern (Default)
+                envSettings = {preset: 'starry', groundColor: '#0a0a0a', grid: '1x1', gridColor: '#333', lighting: 'distant'};
+                ambient.setAttribute('color', '#444');
+                ambient.setAttribute('intensity', '0.4');
+                point.setAttribute('color', '#fff');
+                point.setAttribute('intensity', '0.6');
+            }
+
+            // Update environment component safely
+            env.setAttribute('environment', envSettings);
+
+            loadArtifacts(era);
+        }
+
+        // --- PROXIMITY LOOP (Lighting & Narrative) ---
+        setInterval(() => {
+            const rig = document.querySelector('#my-camera-rig');
+            if (!rig) return;
+            
+            const pos = rig.getAttribute('position');
+            let nearestDist = 9999;
+            let nearestArt = null;
+
+            // Find nearest artifact
+            artifactLocations.forEach(art => {
+                const dx = pos.x - art.x;
+                const dz = pos.z - art.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                
+                if (dist < nearestDist) {
+                    nearestDist = dist;
+                    nearestArt = art;
+                }
+            });
+
+            // Dynamic Lighting & Narrative Logic
+            const ambientLight = document.getElementById('ambient-light');
+            
+            if (nearestDist < 4) {
+                // NEAR MODE
+                // 1. Dim Ambient Light
+                if (ambientLight) ambientLight.setAttribute('intensity', '0.1');
+                
+                // 2. Boost Spotlight
+                const spot = document.getElementById(nearestArt.spotlightId);
+                if (spot) spot.setAttribute('intensity', '1.5');
+
+                // 3. Narrative Audio
+                if (isAudioEnabled && nearestDist < 3 && currentSpeakingArtifactId !== nearestArt.id) {
+                    // Stop previous speech
+                    window.speechSynthesis.cancel();
+                    
+                    // Lower ambient volume while speaking
+                    ambientAudio.volume = 0.2;
+
+                    // Speak new description
+                    const utterance = new SpeechSynthesisUtterance(nearestArt.description || nearestArt.title);
+                    utterance.rate = 0.9;
+                    
+                    utterance.onend = () => {
+                        // Restore ambient volume
+                        if (isAudioEnabled) ambientAudio.volume = 0.5;
+                    };
+
+                    window.speechSynthesis.speak(utterance);
+                    
+                    currentSpeakingArtifactId = nearestArt.id;
+                }
+
+            } else {
+                // FAR MODE (Reset)
+                if (ambientLight) ambientLight.setAttribute('intensity', '0.4');
+                
+                // Reset all spotlights (inefficient but safe)
+                artifactLocations.forEach(art => {
+                    const spot = document.getElementById(art.spotlightId);
+                    if (spot) spot.setAttribute('intensity', '0.8');
+                });
+
+                // Stop speaking if we walked away
+                if (currentSpeakingArtifactId && nearestDist > 5) {
+                    window.speechSynthesis.cancel();
+                    currentSpeakingArtifactId = null;
+                    // Restore ambient volume
+                    if (isAudioEnabled) ambientAudio.volume = 0.5;
+                }
+            }
+
+        }, 500); // Check every 500ms
+
+
+        // Initial Load
+        loadArtifacts('Modern');
+
+
+        // --- AI TOUR LOGIC ---
+        let currentTour = [];
+        let currentStopIndex = -1;
+
+        function startAiTour() {
+            const guideBox = document.getElementById('ai-guide-box');
+            const aiText = document.getElementById('ai-text');
+            
+            guideBox.style.display = 'block';
+            aiText.innerText = "Generating tour path... please wait.";
+            
+            // Pass the current era to the backend to ensure tour matches visible artifacts
+            fetch(`/ai/generate_tour?era=${currentEra}`)
+                .then(res => res.json())
+                .then(data => {
+                    currentTour = data.tour;
+                    currentStopIndex = -1;
+                    if (currentTour.length > 0) {
+                        nextTourStop();
+                    } else {
+                        aiText.innerText = "No artifacts found for a tour.";
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    aiText.innerText = "Error generating tour.";
+                });
+        }
+
+        function nextTourStop() {
+            currentStopIndex++;
+            console.log(`Advancing to stop ${currentStopIndex} of ${currentTour.length}`);
+            
+            if (currentStopIndex >= currentTour.length) {
+                document.getElementById('ai-guide-box').style.display = 'none';
+                return;
+            }
+
+            const stop = currentTour[currentStopIndex];
+            console.log("Current stop data:", stop);
+
+            const aiText = document.getElementById('ai-text');
+            const nextBtn = document.getElementById('ai-next-btn');
+            
+            // Update Text
+            aiText.innerText = stop.text;
+            
+            // TTS Logic
+            const ttsEnabled = document.getElementById('ai-tts-toggle').checked;
+            if (ttsEnabled) {
+                window.speechSynthesis.cancel(); // Stop any previous speech
+                const utterance = new SpeechSynthesisUtterance(stop.text);
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
+            }
+            
+            // Handle Button Text
+            if (currentStopIndex === currentTour.length - 1) {
+                nextBtn.innerText = "Finish Tour";
+            } else {
+                nextBtn.innerText = "Next Stop &rarr;";
+            }
+
+            // Move Player if position is provided
+            if (stop.position) {
+                const rig = document.querySelector('#my-camera-rig');
+                if (!rig) {
+                    console.error("Camera rig not found!");
+                    return;
+                }
+
+                // Temporarily disable movement controls to prevent conflict
+                rig.removeAttribute('movement-controls');
+
+                console.log(`Moving to: ${stop.position.x} ${stop.position.y} ${stop.position.z}`);
+                
+                // Animate Position (using animation__pos to avoid conflicts)
+                rig.setAttribute('animation__pos', {
+                    property: 'position',
+                    to: `${stop.position.x} ${stop.position.y} ${stop.position.z}`,
+                    dur: 2000,
+                    easing: 'easeInOutQuad'
+                });
+
+                // Re-enable movement controls after animation
+                setTimeout(() => {
+                    rig.setAttribute('movement-controls', 'speed: 0.3');
+                }, 2000);
+
+                // Animate Rotation (Look at art)
+                if (stop.look_at) {
+                    // Calculate angle
+                    const dx = stop.look_at.x - stop.position.x;
+                    const dz = stop.look_at.z - stop.position.z;
+                    
+                    // Calculate rotation angle
+                    // Math.atan2(dx, dz) gives angle relative to (0, 1) in standard math
+                    // A-Frame 0 is -Z (0, -1).
+                    // Correct mapping: angle = atan2(dx, dz) * (180/PI) - 180
+                    const angleRad = Math.atan2(dx, dz);
+                    let angleDeg = (angleRad * (180 / Math.PI)) - 180;
+                    
+                    console.log(`Rotating to angle: ${angleDeg}`);
+
+                    rig.setAttribute('animation__rot', {
+                        property: 'rotation',
+                        to: `0 ${angleDeg} 0`,
+                        dur: 2000,
+                        easing: 'easeInOutQuad'
+                    });
+                }
+            }
+        }
+    </script>
+</body>
+</html>

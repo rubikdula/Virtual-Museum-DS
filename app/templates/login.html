@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-5">
+    <div class="row justify-content-center align-items-center" style="min-height: 60vh;">
+        <div class="col-md-5 col-lg-4">
+            <h1 class="display-4 fw-bold mb-4" style="letter-spacing: -2px;">Login</h1>
+            
+            {% if request.query_params.error %}
+            <div class="alert alert-danger rounded-0 border-0 bg-danger text-white mb-4">
+                {{ request.query_params.error }}
+            </div>
+            {% endif %}
+
+            <form action="/auth/login" method="post">
+                <div class="mb-4">
+                    <label for="username" class="form-label fw-bold text-uppercase small">Username</label>
+                    <input type="text" class="form-control form-control-lg rounded-0 border-black" id="username" name="username" required>
+                </div>
+                <div class="mb-5">
+                    <label for="password" class="form-label fw-bold text-uppercase small">Password</label>
+                    <input type="password" class="form-control form-control-lg rounded-0 border-black" id="password" name="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 btn-lg rounded-0 fw-bold text-uppercase" style="padding: 1.5rem;">Login</button>
+            </form>
+            <div class="mt-4">
+                <p class="mb-0">Don't have an account? <a href="/signup" class="fw-bold text-black">Join now &rarr;</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

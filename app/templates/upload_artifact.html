@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-5 py-5 bg-white">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <h1 class="display-4 fw-bold mb-5" style="letter-spacing: -2px;">Upload Artifact</h1>
+            
+            <form action="/artifacts/create" method="post" enctype="multipart/form-data">
+                <div class="mb-4">
+                    <label for="title" class="form-label fw-bold text-uppercase small">Title</label>
+                    <input type="text" class="form-control form-control-lg rounded-0 border-black" id="title" name="title" required>
+                </div>
+                
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label for="category" class="form-label fw-bold text-uppercase small">Category</label>
+                        <select class="form-select form-select-lg rounded-0 border-black" id="category" name="category" required>
+                            <option value="Art">Art</option>
+                            <option value="Science">Science</option>
+                            <option value="Technology">Technology</option>
+                            <option value="History">History</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="era" class="form-label fw-bold text-uppercase small">Time Period (Era)</label>
+                        <select class="form-select form-select-lg rounded-0 border-black" id="era" name="era" required>
+                            <option value="Ancient">Ancient (Pre-500 AD)</option>
+                            <option value="Medieval">Medieval (500-1500)</option>
+                            <option value="Industrial">Industrial (1760-1900)</option>
+                            <option value="Modern">Modern (1900-2020)</option>
+                            <option value="Future">Future (2020+)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="year" class="form-label fw-bold text-uppercase small">Specific Year</label>
+                        <input type="text" class="form-control form-control-lg rounded-0 border-black" id="year" name="year" placeholder="e.g. 1995">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="short_description" class="form-label fw-bold text-uppercase small">Short Description</label>
+                    <textarea class="form-control rounded-0 border-black" id="short_description" name="short_description" rows="2" required></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label for="long_description" class="form-label fw-bold text-uppercase small">Full Description</label>
+                    <textarea class="form-control rounded-0 border-black" id="long_description" name="long_description" rows="5"></textarea>
+                </div>
+
+                <div class="mb-5">
+                    <label for="tags" class="form-label fw-bold text-uppercase small">Tags (comma separated)</label>
+                    <input type="text" class="form-control form-control-lg rounded-0 border-black" id="tags" name="tags" placeholder="oil painting, invention, digital">
+                </div>
+
+                <hr class="mb-5">
+
+                    <div class="mb-3">
+                        <label class="form-label">Media Type</label>
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-uppercase small d-block mb-3">Media Type</label>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="media_type" id="typeImage" value="image" checked onchange="toggleMediaInput()">
+                        <label class="form-check-label" for="typeImage">Image Upload</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="media_type" id="type3D" value="3d_model" onchange="toggleMediaInput()">
+                        <label class="form-check-label" for="type3D">3D Model (GLB)</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="media_type" id="typeVideo" value="video_url" onchange="toggleMediaInput()">
+                        <label class="form-check-label" for="typeVideo">Video URL</label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="media_type" id="typeLink" value="link" onchange="toggleMediaInput()">
+                        <label class="form-check-label" for="typeLink">External Link</label>
+                    </div>
+                </div>
+
+                <div class="mb-5" id="fileInputGroup">
+                    <label for="file" class="form-label fw-bold text-uppercase small">Upload File</label>
+                    <input type="file" class="form-control form-control-lg rounded-0 border-black" id="file" name="file" accept="image/*,.glb,.gltf">
+                </div>
+
+                <div class="mb-5 d-none" id="urlInputGroup">
+                    <label for="media_url_input" class="form-label fw-bold text-uppercase small">Media URL</label>
+                    <input type="url" class="form-control form-control-lg rounded-0 border-black" id="media_url_input" name="media_url_input" placeholder="https://...">
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 btn-lg rounded-0 fw-bold text-uppercase" style="padding: 1.5rem;">Upload Artifact</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMediaInput() {
+    const typeImage = document.getElementById('typeImage');
+    const type3D = document.getElementById('type3D');
+    const fileGroup = document.getElementById('fileInputGroup');
+    const urlGroup = document.getElementById('urlInputGroup');
+    
+    if (typeImage.checked || type3D.checked) {
+        fileGroup.classList.remove('d-none');
+        urlGroup.classList.add('d-none');
+    } else {
+        fileGroup.classList.add('d-none');
+        urlGroup.classList.remove('d-none');
+    }
+}
+</script>
+{% endblock %}

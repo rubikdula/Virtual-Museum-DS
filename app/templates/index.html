@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid px-5 py-5 bg-white">
+    <div class="row mb-5 align-items-end">
+        <div class="col-md-8">
+            <h1 class="display-1 fw-bold mb-0" style="letter-spacing: -3px; line-height: 0.9;">Discover our<br>reimagined galleries</h1>
+        </div>
+        <div class="col-md-4">
+            <form action="/" method="get" class="w-100">
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control border-black rounded-0" placeholder="Search artifacts..." value="{{ search or '' }}">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Time Travel / Era Switcher -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="d-flex justify-content-center gap-2 flex-wrap">
+                <a href="/" class="btn {{ 'btn-dark' if not selected_era else 'btn-outline-dark' }} rounded-pill px-4">All Time</a>
+                <a href="/?era=Ancient" class="btn {{ 'btn-dark' if selected_era == 'Ancient' else 'btn-outline-dark' }} rounded-pill px-4">Ancient</a>
+                <a href="/?era=Medieval" class="btn {{ 'btn-dark' if selected_era == 'Medieval' else 'btn-outline-dark' }} rounded-pill px-4">Medieval</a>
+                <a href="/?era=Industrial" class="btn {{ 'btn-dark' if selected_era == 'Industrial' else 'btn-outline-dark' }} rounded-pill px-4">Industrial</a>
+                <a href="/?era=Modern" class="btn {{ 'btn-dark' if selected_era == 'Modern' else 'btn-outline-dark' }} rounded-pill px-4">Modern</a>
+                <a href="/?era=Future" class="btn {{ 'btn-dark' if selected_era == 'Future' else 'btn-outline-dark' }} rounded-pill px-4">Future</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="artifact-grid">
+    {% for artifact in artifacts %}
+    <a href="/artifact/{{ artifact.id }}" class="artifact-item">
+        {% if artifact.media_type == 'image' %}
+            <div class="artifact-img-wrapper">
+                <img src="{{ artifact.media_url }}" class="artifact-img" alt="{{ artifact.title }}">
+            </div>
+        {% elif artifact.media_type == '3d_model' %}
+            <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
+                <div class="text-center">
+                    <i class="bi bi-box-seam display-4"></i>
+                    <p class="mt-2 fw-bold">3D Model</p>
+                </div>
+            </div>
+        {% elif artifact.media_type == 'video_url' %}
+             <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
+                <div class="text-center">
+                    <i class="bi bi-play-circle display-4"></i>
+                    <p class="mt-2 fw-bold">Video</p>
+                </div>
+            </div>
+        {% else %}
+             <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
+                <div class="text-center">
+                    <i class="bi bi-link-45deg display-4"></i>
+                    <p class="mt-2 fw-bold">Link</p>
+                </div>
+            </div>
+        {% endif %}
+        
+        <div class="artifact-content">
+            <div>
+                <div class="artifact-meta">{{ artifact.category }}</div>
+                <div class="artifact-title">{{ artifact.title }}</div>
+            </div>
+            <div class="mt-auto">
+                <p class="mb-0 fw-bold">View Exhibition &rarr;</p>
+            </div>
+        </div>
+    </a>
+    {% else %}
+    <div class="col-12 text-center py-5" style="grid-column: span 12;">
+        <h3>No artifacts found</h3>
+        <p>Try adjusting your search or upload something new!</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
