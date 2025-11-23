@@ -173,7 +173,7 @@
                     </div>
 
                     <!-- Add Comment Form -->
-                    <form onsubmit="postComment(event, {{ artifact.id }})" class="border-top pt-3">
+                    <form onsubmit="postComment(event)" data-artifact-id="{{ artifact.id }}" class="border-top pt-3">
                         <div class="input-group">
                             <input type="text" id="comment-input-{{ artifact.id }}" name="text" class="form-control border-0 bg-transparent px-0" placeholder="Add a comment..." required style="box-shadow: none;">
                             <button class="btn btn-link text-primary fw-bold text-decoration-none p-0" type="submit">Post</button>
@@ -234,9 +234,10 @@ async function toggleLike(artifactId, btn) {
     }
 }
 
-async function postComment(event, artifactId) {
+async function postComment(event) {
     event.preventDefault();
     const form = event.target;
+    const artifactId = form.dataset.artifactId;
     const input = form.querySelector('input[name="text"]');
     const text = input.value;
     
