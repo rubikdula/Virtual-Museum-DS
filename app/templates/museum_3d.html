@@ -77,6 +77,9 @@
             <button id="audio-btn" onclick="event.stopPropagation(); toggleAudio()" class="hud-btn" style="margin-left: 10px; background: #555;">
                 🔇 Enable Audio
             </button>
+            <button id="view-btn" onclick="event.stopPropagation(); toggleView()" class="hud-btn" style="margin-left: 10px; background: #FF9800;">
+                👁️ View: 1st Person
+            </button>
         </div>
 
         <!-- Time Travel HUD -->
@@ -264,6 +267,14 @@
             const avatarTypes = ['Engineer', 'Hipster', 'Shadow', 'Speedster'];
             const myAvatarType = avatarTypes[Math.floor(Math.random() * avatarTypes.length)];
             console.log("My Avatar:", myAvatarType);
+            
+            // Initialize Local Avatar
+            const myAvatarImg = document.getElementById('my-avatar-img');
+            if (myAvatarImg) {
+                myAvatarImg.setAttribute('src', `/static/avatars/${myAvatarType}/${myAvatarType}_Walking_Front.png`);
+                // Make it look at the camera so it's always visible
+                document.getElementById('my-avatar').setAttribute('look-at', '#my-camera');
+            }
 
             // Debug Overlay
             const debugText = document.createElement('div');
@@ -390,6 +401,10 @@
             }
 
             // Send MY position to server every 50ms
+            let lastMyPos = null;
+            let myFrame = 1;
+            let lastMyUpdate = Date.now();
+
             setInterval(() => {
                 const rig = document.querySelector('#my-camera-rig');
                 const camera = document.querySelector('#my-camera');
@@ -403,6 +418,33 @@
                         const pos = {x: rawPos.x, y: rawPos.y, z: rawPos.z};
                         const rot = {x: rawRot.x, y: rawRot.y, z: rawRot.z};
                         
+                        // Animate Local Avatar if moving
+                        if (lastMyPos) {
+                            const dx = pos.x - lastMyPos.x;
+                            const dz = pos.z - lastMyPos.z;
+                            const dist = Math.sqrt(dx*dx + dz*dz);
+                            
+                            if (dist > 0.002) {
+                                const now = Date.now();
+                                if (now - lastMyUpdate > 150) {
+                                    myFrame = (myFrame % 4) + 1;
+                                    const myImg = document.getElementById('my-avatar-img');
+                                    if (myImg) {
+                                        myImg.setAttribute('src', `/static/avatars/${myAvatarType}/${myAvatarType}_Walking_${myFrame}.png`);
+                                    }
+                                    lastMyUpdate = now;
+                                }
+                            } else {
+                                // Idle
+                                const myImg = document.getElementById('my-avatar-img');
+                                if (myImg && myFrame !== 1) { // Reset to idle once
+                                    myImg.setAttribute('src', `/static/avatars/${myAvatarType}/${myAvatarType}_Walking_Front.png`);
+                                    myFrame = 1;
+                                }
+                            }
+                        }
+                        lastMyPos = {x: pos.x, y: pos.y, z: pos.z};
+
                         ws.send(JSON.stringify({
                             userId: myId,
                             username: myUsername,
@@ -416,6 +458,45 @@
                 }
             }, 50);
         });
+
+        // --- VIEW TOGGLE LOGIC ---
+        let isThirdPerson = false;
+        function toggleView() {
+            isThirdPerson = !isThirdPerson;
+            const btn = document.getElementById('view-btn');
+            const camera = document.getElementById('my-camera');
+            const avatar = document.getElementById('my-avatar');
+            
+            if (isThirdPerson) {
+                btn.innerText = "👁️ View: 3rd Person";
+                btn.style.background = "#9C27B0"; // Purple
+                
+                // Move Camera Back and Up
+                camera.setAttribute('animation', {
+                    property: 'position',
+                    to: '0 3 4',
+                    dur: 500,
+                    easing: 'easeInOutQuad'
+                });
+                
+                // Show Avatar
+                avatar.setAttribute('visible', 'true');
+            } else {
+                btn.innerText = "👁️ View: 1st Person";
+                btn.style.background = "#FF9800"; // Orange
+                
+                // Move Camera to Eye Level
+                camera.setAttribute('animation', {
+                    property: 'position',
+                    to: '0 1.6 0',
+                    dur: 500,
+                    easing: 'easeInOutQuad'
+                });
+                
+                // Hide Avatar
+                avatar.setAttribute('visible', 'false');
+            }
+        }
     </script>
 
     <a-scene>
@@ -431,6 +512,12 @@
             <a-entity id="my-camera" camera position="0 1.6 0" look-controls="pointerLockEnabled: true">
                 <!-- White cursor for dark environment -->
                 <a-cursor color="#fff" scale="0.5 0.5 0.5" raycaster="objects: .clickable"></a-cursor>
+            </a-entity>
+            
+            <!-- Local Avatar (Visible in 3rd Person) -->
+            <a-entity id="my-avatar" visible="false" position="0 1.25 0">
+                <!-- Image will be set by JS -->
+                <a-image id="my-avatar-img" width="1.5" height="2.5" transparent="true" alpha-test="0.5" side="double"></a-image>
             </a-entity>
         </a-entity>
 

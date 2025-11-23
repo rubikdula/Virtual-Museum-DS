@@ -32,12 +32,12 @@ main {
 /* Navbar */
 .navbar {
     background-color: var(--color-bg) !important;
-    border-bottom: none;
-    padding: 2rem 4rem;
+    border-bottom: 2px solid #000; /* Added border for structure */
+    padding: 1.5rem 3rem;
 }
 
 .navbar-brand {
-    font-size: 3rem;
+    font-size: 2.5rem;
     font-weight: 900;
     color: #000 !important;
     letter-spacing: -2px;
@@ -47,15 +47,27 @@ main {
 
 .nav-link {
     color: #000 !important;
+    font-family: var(--font-main);
     font-weight: 700;
-    font-size: 1rem;
-    margin-left: 2rem;
-    text-transform: lowercase;
+    font-size: 0.9rem;
+    margin-left: 1.5rem;
+    text-transform: uppercase; /* Changed to uppercase to match brand */
+    letter-spacing: 0.5px;
+    transition: color 0.2s ease;
 }
 
-.nav-link:hover, .nav-link.active {
-    background-color: var(--color-yellow);
+.nav-link:hover {
+    background-color: transparent;
+    color: var(--color-teal) !important;
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: 5px;
+}
+
+.nav-link.active {
+    background-color: transparent;
     color: #000 !important;
+    cursor: default;
 }
 
 /* Grid Layout */

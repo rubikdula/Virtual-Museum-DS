@@ -17,7 +17,7 @@
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+                <ul class="navbar-nav ms-auto align-items-center">
                     <li class="nav-item">
                         <a class="nav-link" href="/">Exhibitions</a>
                     </li>
@@ -25,20 +25,18 @@
                         <a class="nav-link" href="/world">3D World</a>
                     </li>
                     {% if user %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="/my-artifacts">My Collection</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/upload">Upload</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link fw-bold text-warning" href="/artifacts/create-ai">✨ AI Generator</a>
-                    </li>
-                    <li class="nav-item">
-                        <span class="nav-link active">Hello, {{ user.username }}</span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/auth/logout">Logout</a>
+                    <li class="nav-item dropdown ms-3">
+                        <a class="nav-link" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots" style="font-size: 1.5rem;"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-3 rounded-0" aria-labelledby="navbarDropdown">
+                            <li><h6 class="dropdown-header text-uppercase fw-bold text-muted mb-2">Hello, {{ user.username }}</h6></li>
+                            <li><a class="dropdown-item py-2 text-uppercase fw-bold" href="/my-artifacts">My Collection</a></li>
+                            <li><a class="dropdown-item py-2 text-uppercase fw-bold" href="/upload">Upload</a></li>
+                            <li><a class="dropdown-item py-2 text-uppercase fw-bold" href="/artifacts/create-ai">✨ AI Generator</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item py-2 text-uppercase fw-bold text-danger" href="/auth/logout">Logout</a></li>
+                        </ul>
                     </li>
                     {% else %}
                     <li class="nav-item">
