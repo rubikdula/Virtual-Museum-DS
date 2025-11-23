@@ -9,6 +9,9 @@ from jose import JWTError, jwt
 import os
 from dotenv import load_dotenv
 from .. import models, schemas, database
+from fastapi.templating import Jinja2Templates
+
+templates = Jinja2Templates(directory="app/templates")
 
 load_dotenv()
 
@@ -110,4 +113,48 @@ async def login(
 async def logout():
     response = RedirectResponse(url="/", status_code=303)
     response.delete_cookie("access_token")
+    return response
+
+@router.get("/profile/edit")
+async def edit_profile_page(request: Request, current_user: models.User = Depends(get_current_user)):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("edit_profile.html", {"request": request, "user": current_user})
+
+@router.post("/profile/edit")
+async def update_profile(
+    username: str = Form(...),
+    email: str = Form(...),
+    full_name: str = Form(None),
+    bio: str = Form(None),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    # Check if username is taken (if changed)
+    if username != current_user.username:
+        existing_user = db.query(models.User).filter(models.User.username == username).first()
+        if existing_user:
+            # Ideally return to form with error
+            return RedirectResponse(url="/auth/profile/edit?error=Username taken", status_code=303)
+    
+    current_user.username = username
+    current_user.email = email
+    current_user.full_name = full_name
+    current_user.bio = bio
+    
+    db.commit()
+    
+    # If username changed, we need to update the token!
+    # For simplicity, let's just update the cookie with a new token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": current_user.username}, expires_delta=access_token_expires
+    )
+    
+    response = RedirectResponse(url="/my-artifacts", status_code=303)
+    response.set_cookie(key="access_token", value=f"Bearer {access_token}", httponly=True)
+    
     return response

@@ -6,6 +6,7 @@ import openai
 import os
 import json
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -15,6 +16,10 @@ router = APIRouter(
 )
 
 client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+
+class ChatRequest(BaseModel):
+    message: str
+    context: str = None
 
 @router.get("/generate_tour")
 def generate_tour(era: str = None, db: Session = Depends(database.get_db)):
@@ -134,3 +139,26 @@ def generate_tour(era: str = None, db: Session = Depends(database.get_db)):
     })
 
     return {"tour": tour_stops}
+
+@router.post("/chat")
+def chat_with_guide(request: ChatRequest):
+    """
+    Chat with the AI Museum Guide.
+    """
+    try:
+        system_prompt = "You are a knowledgeable and charismatic museum tour guide. Answer the visitor's questions about art, history, and the museum artifacts. Keep answers concise and engaging."
+        
+        if request.context:
+            system_prompt += f"\nContext: The user is currently looking at: {request.context}"
+
+        completion = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": request.message}
+            ]
+        )
+        return {"response": completion.choices[0].message.content}
+    except Exception as e:
+        print(f"AI Chat Error: {e}")
+        raise HTTPException(status_code=500, detail="AI Guide is currently on a coffee break.")

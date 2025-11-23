@@ -63,6 +63,51 @@
             pointer-events: none;
             opacity: 0.5;
         }
+
+        /* AI Chat Bar */
+        #ai-chat-container {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        #ai-response {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: none;
+            text-align: center;
+            font-family: 'Helvetica Neue', sans-serif;
+        }
+
+        #chat-input {
+            flex-grow: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 20px;
+            font-size: 16px;
+            outline: none;
+            border-radius: 30px;
+        }
+
+        #tts-btn {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+            margin-left: 5px;
+        }
     </style>
 </head>
 <body>
@@ -80,6 +125,18 @@
             <button id="view-btn" onclick="event.stopPropagation(); toggleView()" class="hud-btn" style="margin-left: 10px; background: #FF9800;">
                 👁️ View: 1st Person
             </button>
+        </div>
+
+        <!-- AI Chat Bar -->
+        <div id="ai-chat-container" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 60%; max-width: 600px; display: flex; flex-direction: column; align-items: center; pointer-events: auto;">
+            <div id="ai-response" style="background: rgba(0, 0, 0, 0.8); color: #fff; padding: 10px 20px; border-radius: 10px; margin-bottom: 10px; display: none; text-align: center; font-family: 'Helvetica Neue', sans-serif;">
+                <!-- AI Response Text -->
+            </div>
+            <div style="display: flex; width: 100%; background: rgba(255, 255, 255, 0.9); border-radius: 30px; padding: 5px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                <input type="text" id="chat-input" placeholder="Ask the AI Guide a question..." style="flex-grow: 1; border: none; background: transparent; padding: 10px 20px; font-size: 16px; outline: none; border-radius: 30px;">
+                <button onclick="sendChat()" style="background: #2d9183; color: white; border: none; padding: 10px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; margin-left: 5px;">Ask</button>
+                <button onclick="toggleTTS()" id="tts-btn" style="background: #555; color: white; border: none; padding: 10px 15px; border-radius: 50%; cursor: pointer; margin-left: 5px;" title="Toggle Text-to-Speech">🔊</button>
+            </div>
         </div>
 
         <!-- Time Travel HUD -->
@@ -497,6 +554,70 @@
                 avatar.setAttribute('visible', 'false');
             }
         }
+
+        // --- AI CHAT LOGIC ---
+        let ttsEnabled = true;
+
+        function toggleTTS() {
+            ttsEnabled = !ttsEnabled;
+            const btn = document.getElementById('tts-btn');
+            btn.innerHTML = ttsEnabled ? '🔊' : '🔇';
+            btn.style.background = ttsEnabled ? '#555' : '#999';
+        }
+
+        async function sendChat() {
+            const input = document.getElementById('chat-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // Clear input
+            input.value = '';
+            
+            // Show loading or user message?
+            const responseDiv = document.getElementById('ai-response');
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = `<em>Asking guide: "${message}"...</em>`;
+
+            try {
+                // Get current context (e.g., closest artifact) if possible
+                // For now, we'll just send the message
+                const res = await fetch('/ai/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, context: "User is in the 3D gallery." })
+                });
+                
+                const data = await res.json();
+                
+                if (data.response) {
+                    responseDiv.innerHTML = `<strong>Guide:</strong> ${data.response}`;
+                    if (ttsEnabled) {
+                        speak(data.response);
+                    }
+                } else {
+                    responseDiv.innerHTML = "<em>Guide is thinking... (No response)</em>";
+                }
+            } catch (error) {
+                console.error('Chat error:', error);
+                responseDiv.innerHTML = "<em>Error connecting to the guide.</em>";
+            }
+        }
+
+        function speak(text) {
+            window.speechSynthesis.cancel(); // Stop previous
+            const utterance = new SpeechSynthesisUtterance(text);
+            // Optional: Select a voice
+            // const voices = window.speechSynthesis.getVoices();
+            // utterance.voice = voices.find(v => v.name.includes('Google US English')); 
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // Allow Enter key to send
+        document.getElementById('chat-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendChat();
+            }
+        });
     </script>
 
     <a-scene>

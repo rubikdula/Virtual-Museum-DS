@@ -9,6 +9,8 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
+    full_name = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)
     hashed_password = Column(String)
     museum_theme = Column(String, default="starry") # Personal museum theme
     created_at = Column(DateTime(timezone=True), server_default=func.now())

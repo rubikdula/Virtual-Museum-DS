@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-header bg-white border-0 p-4">
+                    <h2 class="fw-bold mb-0">Edit Profile</h2>
+                </div>
+                <div class="card-body p-4">
+                    <form action="/auth/profile/edit" method="post">
+                        <div class="text-center mb-4">
+                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ user.username }}" 
+                                 class="rounded-circle border p-1" width="100" height="100" alt="Profile">
+                            <p class="text-muted small mt-2">Avatar is generated from your username</p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="username" class="form-label fw-bold">Username</label>
+                            <input type="text" class="form-control form-control-lg" id="username" name="username" value="{{ user.username }}" required>
+                            <div class="form-text">Changing this will change your avatar!</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label fw-bold">Display Name</label>
+                            <input type="text" class="form-control form-control-lg" id="full_name" name="full_name" value="{{ user.full_name or '' }}" placeholder="e.g. John Doe">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label fw-bold">Email</label>
+                            <input type="email" class="form-control form-control-lg" id="email" name="email" value="{{ user.email }}" required>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="bio" class="form-label fw-bold">Bio</label>
+                            <textarea class="form-control" id="bio" name="bio" rows="4" placeholder="Tell us about yourself...">{{ user.bio or '' }}</textarea>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-dark btn-lg rounded-pill fw-bold">Save Changes</button>
+                            <a href="/my-artifacts" class="btn btn-outline-secondary btn-lg rounded-pill fw-bold">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
