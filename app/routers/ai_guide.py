@@ -30,8 +30,8 @@ def generate_tour(era: str = None, db: Session = Depends(database.get_db)):
     # Get the list that matches what the frontend sees (for index calculation)
     all_artifacts_in_view = query.order_by(models.Artifact.likes_count.desc(), models.Artifact.id.asc()).all()
     
-    # Select top 3 for the tour (to keep API costs/latency low)
-    tour_artifacts = all_artifacts_in_view[:3]
+    # Select all artifacts for the tour
+    tour_artifacts = all_artifacts_in_view
     
     if not tour_artifacts:
         return {"tour": []}

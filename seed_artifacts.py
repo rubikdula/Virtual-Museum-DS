@@ -32,6 +32,7 @@ artifacts_data = [
         "title": "The Starry Night",
         "category": "Art",
         "year": "1889",
+        "era": "Industrial",
         "short_description": "Oil on canvas by Vincent van Gogh.",
         "long_description": "The Starry Night is an oil on canvas by the Dutch post-impressionist painter Vincent van Gogh. Painted in June 1889, it depicts the view from the east-facing window of his asylum room at Saint-Rémy-de-Provence, just before sunrise, with the addition of an idealized village.",
         "media_type": "image",
@@ -42,6 +43,7 @@ artifacts_data = [
         "title": "Mona Lisa",
         "category": "Art",
         "year": "1503",
+        "era": "Medieval",
         "short_description": "Portrait by Leonardo da Vinci.",
         "long_description": "The Mona Lisa is a half-length portrait painting by Italian artist Leonardo da Vinci. Considered an archetypal masterpiece of the Italian Renaissance, it has been described as 'the best known, the most visited, the most written about, the most sung about, the most parodied work of art in the world'.",
         "media_type": "image",
@@ -52,6 +54,7 @@ artifacts_data = [
         "title": "The Persistence of Memory",
         "category": "Art",
         "year": "1931",
+        "era": "Modern",
         "short_description": "Surrealist painting by Salvador Dalí.",
         "long_description": "The Persistence of Memory is a 1931 painting by artist Salvador Dalí and one of the most recognizable works of Surrealism. First shown at the Julien Levy Gallery in 1932, since 1934 the painting has been in the collection of the Museum of Modern Art in New York City, which received it from an anonymous donor.",
         "media_type": "image",
@@ -62,6 +65,7 @@ artifacts_data = [
         "title": "Girl with a Pearl Earring",
         "category": "Art",
         "year": "1665",
+        "era": "Medieval",
         "short_description": "Oil painting by Johannes Vermeer.",
         "long_description": "Girl with a Pearl Earring is an oil painting by Dutch Golden Age painter Johannes Vermeer, dated c. 1665. Going by various names over the centuries, it became known by its present title towards the end of the 20th century after the large pearl earring worn by the girl portrayed there.",
         "media_type": "image",
@@ -72,6 +76,7 @@ artifacts_data = [
         "title": "The Great Wave off Kanagawa",
         "category": "Art",
         "year": "1831",
+        "era": "Industrial",
         "short_description": "Woodblock print by Hokusai.",
         "long_description": "The Great Wave off Kanagawa is a woodblock print by the Japanese ukiyo-e artist Hokusai. It was published sometime between 1829 and 1833 in the late Edo period as the first print in Hokusai's series Thirty-six Views of Mount Fuji.",
         "media_type": "image",
@@ -82,6 +87,7 @@ artifacts_data = [
         "title": "The Scream",
         "category": "Art",
         "year": "1893",
+        "era": "Industrial",
         "short_description": "Expressionist painting by Edvard Munch.",
         "long_description": "The Scream is the popular name given to a composition created by Norwegian Expressionist artist Edvard Munch in 1893. The original German title given by Munch to his work was Der Schrei der Natur (The Scream of Nature), and the Norwegian title is Skrik (Shriek).",
         "media_type": "image",
@@ -92,6 +98,7 @@ artifacts_data = [
         "title": "Ancient Greek Vase",
         "category": "History",
         "year": "500 BC",
+        "era": "Ancient",
         "short_description": "Terracotta amphora from Athens.",
         "long_description": "An ancient Greek terracotta amphora, used for storing wine or oil. Decorated with black-figure pottery techniques depicting scenes from mythology.",
         "media_type": "image",
@@ -102,6 +109,7 @@ artifacts_data = [
         "title": "Rosetta Stone",
         "category": "History",
         "year": "196 BC",
+        "era": "Ancient",
         "short_description": "Granodiorite stele with three scripts.",
         "long_description": "The Rosetta Stone is a stele composed of granodiorite inscribed with three versions of a decree issued in Memphis, Egypt, in 196 BC during the Ptolemaic dynasty on behalf of King Ptolemy V Epiphanes.",
         "media_type": "image",
@@ -112,6 +120,7 @@ artifacts_data = [
         "title": "Antikythera Mechanism",
         "category": "Science",
         "year": "150 BC",
+        "era": "Ancient",
         "short_description": "Ancient Greek hand-powered orrery.",
         "long_description": "The Antikythera mechanism is an ancient Greek hand-powered orrery, described as the oldest example of an analogue computer used to predict astronomical positions and eclipses for calendar and astrological purposes decades in advance.",
         "media_type": "image",
@@ -122,6 +131,7 @@ artifacts_data = [
         "title": "Wright Flyer",
         "category": "Science",
         "year": "1903",
+        "era": "Industrial",
         "short_description": "First successful heavier-than-air powered aircraft.",
         "long_description": "The Wright Flyer (often retrospectively referred to as Flyer I or 1903 Flyer) was the first successful heavier-than-air powered aircraft. It was designed and built by the Wright brothers.",
         "media_type": "image",
@@ -132,6 +142,7 @@ artifacts_data = [
         "title": "Apollo 11 Command Module",
         "category": "Space",
         "year": "1969",
+        "era": "Modern",
         "short_description": "The spacecraft that carried astronauts to the Moon.",
         "long_description": "The Command Module Columbia was the living quarters for the three-person crew during most of the first manned lunar landing mission in July 1969.",
         "media_type": "image",
@@ -142,6 +153,7 @@ artifacts_data = [
         "title": "First Transistor",
         "category": "Technology",
         "year": "1947",
+        "era": "Modern",
         "short_description": "Replica of the first point-contact transistor.",
         "long_description": "The first point-contact transistor was built in 1947 at Bell Labs. It revolutionized the field of electronics, and paved the way for smaller and cheaper radios, calculators, and computers.",
         "media_type": "image",
@@ -152,6 +164,7 @@ artifacts_data = [
         "title": "T-Rex Skeleton (Sue)",
         "category": "Natural History",
         "year": "67 Million Years Ago",
+        "era": "Ancient",
         "short_description": "The largest, most extensive and best preserved T-Rex specimen.",
         "long_description": "Sue is the nickname given to FMNH PR 2081, which is one of the largest, most extensive, and best preserved Tyrannosaurus rex specimens ever found, at the Field Museum of Natural History in Chicago.",
         "media_type": "image",
@@ -169,10 +182,12 @@ for artifact_data in artifacts_data:
         print(f"Added artifact: {artifact.title}")
     else:
         print(f"Updating artifact: {artifact_data['title']}")
+        print(f"  Old Era: {existing.era} -> New Era: {artifact_data['era']}")
         existing.media_url = artifact_data["media_url"]
         existing.long_description = artifact_data["long_description"]
         existing.short_description = artifact_data["short_description"]
         existing.year = artifact_data["year"]
+        existing.era = artifact_data["era"]
         existing.category = artifact_data["category"]
         existing.likes_count = artifact_data["likes_count"]
         

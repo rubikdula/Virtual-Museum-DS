@@ -9,3 +9,6 @@ passlib[argon2]
 aiofiles
 email-validator
 websockets
+python-dotenv
+openai
+numpy

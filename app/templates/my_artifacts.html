@@ -9,6 +9,37 @@
         </div>
     </div>
 
+    <!-- Personal Museum Section -->
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card text-white" style="background: linear-gradient(45deg, #1a1a1a, #2d9183);">
+                <div class="card-body p-5 text-center">
+                    <h2 class="display-5 fw-bold mb-3">Your Personal Metaverse Museum</h2>
+                    <p class="lead mb-4">Customize your own 3D space, arrange your artifacts, and invite friends!</p>
+                    
+                    <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+                        <div class="text-start">
+                            <label class="form-label small text-uppercase fw-bold text-white-50">Choose Room Style</label>
+                            <select id="museum-theme-select" class="form-select form-select-lg" style="min-width: 250px;">
+                                <option value="starry" {% if user.museum_theme == 'starry' %}selected{% endif %}>Starry Night</option>
+                                <option value="forest" {% if user.museum_theme == 'forest' %}selected{% endif %}>Enchanted Forest</option>
+                                <option value="egypt" {% if user.museum_theme == 'egypt' %}selected{% endif %}>Ancient Egypt</option>
+                                <option value="tron" {% if user.museum_theme == 'tron' %}selected{% endif %}>Cyberpunk City</option>
+                                <option value="japan" {% if user.museum_theme == 'japan' %}selected{% endif %}>Japanese Garden</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mt-4"> <!-- Align with input -->
+                            <button onclick="enterMuseum()" class="btn btn-light btn-lg px-5 fw-bold shadow-lg">
+                                Enter 3D World 🚀
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="artifact-grid">
         {% for artifact in artifacts %}
         <div class="artifact-item" style="grid-column: span 4; background-color: #f8f9fa; border: 1px solid #eee;">
@@ -60,4 +91,38 @@
         {% endfor %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function enterMuseum() {
+    const theme = document.getElementById('museum-theme-select').value;
+    const btn = document.querySelector('button[onclick="enterMuseum()"]');
+    const originalText = btn.innerText;
+    
+    btn.innerText = "Loading...";
+    btn.disabled = true;
+
+    // Update theme preference first
+    fetch('/museum/api/update_theme', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({theme: theme})
+    }).then(res => {
+        if (res.ok) {
+            // Redirect to personal museum
+            window.location.href = `/museum/{{ user.username }}`;
+        } else {
+            alert("Error updating theme settings.");
+            btn.innerText = originalText;
+            btn.disabled = false;
+        }
+    }).catch(err => {
+        console.error(err);
+        alert("Connection error.");
+        btn.innerText = originalText;
+        btn.disabled = false;
+    });
+}
+</script>
 {% endblock %}

@@ -4,7 +4,7 @@ from app.database import engine, Base
 from app import models
 from typing import List
 import json
-from .routers import auth, artifacts, pages, ai_guide, ai_enrichment
+from .routers import auth, artifacts, pages, ai_guide, ai_enrichment, museum
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
@@ -18,6 +18,7 @@ app.mount("/media", StaticFiles(directory="app/media"), name="media")
 # Include routers
 app.include_router(auth.router)
 app.include_router(artifacts.router)
+app.include_router(museum.router)
 app.include_router(pages.router)
 app.include_router(ai_guide.router)
 app.include_router(ai_enrichment.router)
@@ -25,38 +26,38 @@ app.include_router(ai_enrichment.router)
 # --- WEBSOCKET MANAGER ---
 class ConnectionManager:
     def __init__(self):
-        # Store active connections: {socket: user_id}
-        self.active_connections: List[WebSocket] = []
+        # Store active connections: {room_id: [WebSocket]}
+        self.rooms: dict = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, room_id: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if room_id not in self.rooms:
+            self.rooms[room_id] = []
+        self.rooms[room_id].append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, room_id: str):
+        if room_id in self.rooms:
+            if websocket in self.rooms[room_id]:
+                self.rooms[room_id].remove(websocket)
+            if not self.rooms[room_id]:
+                del self.rooms[room_id]
 
-    async def broadcast(self, message: dict, sender: WebSocket):
-        # Send message to everyone EXCEPT the sender (to avoid echo lag)
-        for connection in self.active_connections:
-            if connection != sender:
-                await connection.send_text(json.dumps(message))
+    async def broadcast(self, message: dict, sender: WebSocket, room_id: str):
+        if room_id in self.rooms:
+            for connection in self.rooms[room_id]:
+                if connection != sender:
+                    await connection.send_text(json.dumps(message))
 
 manager = ConnectionManager()
 
-@app.websocket("/ws/museum")
-async def websocket_endpoint(websocket: WebSocket):
-    print(f"Attempting connection from {websocket.client}")
-    await manager.connect(websocket)
-    print(f"Connected: {websocket.client}")
+@app.websocket("/ws/museum/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    print(f"Attempting connection to room {room_id}")
+    await manager.connect(websocket, room_id)
     try:
         while True:
-            # Wait for data from the client (their position/rotation)
             data = await websocket.receive_text()
             data_json = json.loads(data)
-            
-            # Broadcast this player's new position to everyone else
-            await manager.broadcast(data_json, websocket)
+            await manager.broadcast(data_json, websocket, room_id)
     except WebSocketDisconnect:
-        print(f"Disconnected: {websocket.client}")
-        manager.disconnect(websocket)
-        # Optional: Broadcast a "user left" message here if you want
+        manager.disconnect(websocket, room_id)

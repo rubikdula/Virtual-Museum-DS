@@ -5,6 +5,7 @@
     <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
     <script src="https://unpkg.com/aframe-environment-component@1.3.3/dist/aframe-environment-component.min.js"></script>
     <script src="https://cdn.jsdelivr.net/gh/c-frame/aframe-extras@7.0.0/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-look-at-component@0.8.0/dist/aframe-look-at-component.min.js"></script>
     <link rel="stylesheet" href="/static/css/style.css">
     <style>
         /* Overlay UI */
@@ -79,6 +80,42 @@
         </div>
 
         <!-- Time Travel HUD -->
+        {% if mode == 'personal' %}
+        <div style="position: absolute; top: 30px; right: 30px; text-align: right;">
+            <h3 style="color: white; font-family: 'Helvetica Neue', sans-serif; text-transform: uppercase; margin: 0 0 10px 0; text-shadow: 0 0 10px black;">{{ target_username }}'s Museum</h3>
+            {% if is_owner %}
+            <div style="margin-bottom: 10px;">
+                <select id="theme-select" onchange="updateTheme(this.value)" style="padding: 5px;">
+                    <option value="starry" {% if theme == 'starry' %}selected{% endif %}>Starry Night</option>
+                    <option value="forest" {% if theme == 'forest' %}selected{% endif %}>Forest</option>
+                    <option value="egypt" {% if theme == 'egypt' %}selected{% endif %}>Egypt</option>
+                    <option value="tron" {% if theme == 'tron' %}selected{% endif %}>Tron</option>
+                    <option value="japan" {% if theme == 'japan' %}selected{% endif %}>Japan</option>
+                </select>
+            </div>
+            <button onclick="toggleEditMode()" id="edit-btn" class="hud-btn" style="background: #e91e63;">✏️ Edit Layout</button>
+            {% endif %}
+        </div>
+        
+        <!-- Inventory HUD -->
+        {% if is_owner %}
+        <div style="position: absolute; bottom: 30px; right: 30px;">
+            <button onclick="toggleInventory()" class="hud-btn" style="background: #9c27b0;">📦 Inventory</button>
+        </div>
+
+        <div id="inventory-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600px; height: 400px; background: rgba(0,0,0,0.9); border: 2px solid #9c27b0; padding: 20px; overflow-y: auto; pointer-events: auto; z-index: 2000;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="color: white; margin: 0; font-family: 'Helvetica Neue', sans-serif;">My Artifacts</h3>
+                <button onclick="toggleInventory()" style="background: none; border: none; color: white; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            <div id="inventory-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px;">
+                <!-- Items will be injected here -->
+                <div style="color: #ccc; grid-column: 1/-1; text-align: center;">Loading...</div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
         <div style="position: absolute; top: 30px; right: 30px; text-align: right;">
             <h3 style="color: white; font-family: 'Helvetica Neue', sans-serif; text-transform: uppercase; margin: 0 0 10px 0; text-shadow: 0 0 10px black;">Time Travel Mode</h3>
             <div>
@@ -90,6 +127,7 @@
             </div>
             <div id="era-indicator" style="color: #ffcc00; font-weight: bold; margin-top: 5px; font-family: 'Helvetica Neue', sans-serif;">Current Era: Modern</div>
         </div>
+        {% endif %}
         
         <div id="ai-guide-box" style="display: none; position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 600px; max-width: 90%; background: rgba(0, 0, 0, 0.8); color: white; padding: 20px; border-radius: 10px; font-family: 'Helvetica Neue', sans-serif; text-align: center; border: 2px solid #2d9183; pointer-events: auto;">
             <h3 style="margin: 0 0 10px 0; color: #2d9183; text-transform: uppercase;">AI Curator</h3>
@@ -156,15 +194,76 @@
         document.addEventListener('DOMContentLoaded', () => {
             // --- MULTIPLAYER LOGIC ---
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws/museum`;
             
-            const ws = new WebSocket(wsUrl);
+            // Determine Room ID
+            // If personal mode, room is "user_{target_username}"
+            // If public mode, room is "public_{era}" (default Modern)
+            const mode = "{{ mode|default('public') }}";
+            const targetUser = "{{ target_username|default('') }}";
+            let roomId = "public_Modern";
+            
+            if (mode === 'personal') {
+                roomId = `user_${targetUser}`;
+            } else {
+                // We'll update this when era changes, but for initial connection:
+                roomId = "public_Modern"; 
+            }
+
+            const wsUrl = `${protocol}//${window.location.host}/ws/museum/${roomId}`;
+            
+            let ws = new WebSocket(wsUrl);
+            
+            // Function to reconnect with new room
+            window.connectToRoom = function(newRoomId) {
+                if (ws) ws.close();
+                const newUrl = `${protocol}//${window.location.host}/ws/museum/${newRoomId}`;
+                ws = new WebSocket(newUrl);
+                setupWsHandlers(ws);
+            };
+
+            function setupWsHandlers(socket) {
+                socket.onopen = () => {
+                    console.log("Connected to 3D Museum Server");
+                    debugText.innerHTML = 'Connected to Multiplayer Server<br>Waiting for other players...';
+                };
+                
+                socket.onerror = (error) => {
+                    console.error("WebSocket Error:", error);
+                    debugText.innerHTML = 'Connection Error (Check Console)';
+                    debugText.style.color = 'red';
+                };
+                
+                socket.onclose = (event) => {
+                    console.log("WebSocket Closed:", event);
+                    debugText.innerHTML = 'Disconnected from Server';
+                    debugText.style.color = 'orange';
+                };
+
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.userId && data.userId !== myId) {
+                            updateOtherPlayer(data);
+                            debugText.innerHTML = `Connected<br>Players nearby: ${Object.keys(otherPlayers).length}`;
+                        }
+                    } catch (e) {
+                        console.error("Error parsing message:", e);
+                    }
+                };
+            }
+            
+            setupWsHandlers(ws);
             
             // Get user info safely
             const myUsername = "{{ username }}";
             const myTotalLikes = {{ total_likes|default(0) }};
             const myId = "user_" + Math.random().toString(36).substr(2, 9); 
             const otherPlayers = {}; 
+
+            // Avatar Selection
+            const avatarTypes = ['Engineer', 'Hipster', 'Shadow', 'Speedster'];
+            const myAvatarType = avatarTypes[Math.floor(Math.random() * avatarTypes.length)];
+            console.log("My Avatar:", myAvatarType);
 
             // Debug Overlay
             const debugText = document.createElement('div');
@@ -217,24 +316,76 @@
                 if (!otherPlayers[data.userId]) {
                     console.log("New player joined:", data.username);
                     const avatar = document.createElement('a-entity');
+                    avatar.setAttribute('look-at', '#my-camera'); // Always face me
                     
-                    // Simple avatar: A floating sphere and a cylinder body
-                    avatar.innerHTML = `
-                        <a-sphere position="0 1.7 0" radius="0.3" color="${data.color || 'red'}"></a-sphere>
-                        <a-cylinder position="0 0.75 0" radius="0.3" height="1.5" color="${data.color || 'red'}"></a-cylinder>
-                        <a-text value="${data.username || 'Visitor'}\nLikes: ${data.likes || 0}" position="0 2.4 0" align="center" side="double" color="white" width="4"></a-text>
-                    `;
+                    // Sprite Image
+                    const img = document.createElement('a-image');
+                    img.setAttribute('id', `img-${data.userId}`);
+                    const type = data.avatarType || 'Engineer';
+                    img.setAttribute('src', `/static/avatars/${type}/${type}_Walking_Front.png`);
+                    img.setAttribute('width', '1.5');
+                    img.setAttribute('height', '2.5');
+                    img.setAttribute('position', '0 1.25 0');
+                    img.setAttribute('transparent', 'true');
+                    img.setAttribute('alpha-test', '0.5'); 
+                    avatar.appendChild(img);
+
+                    // Name Tag
+                    const text = document.createElement('a-text');
+                    text.setAttribute('value', `${data.username || 'Visitor'}\nLikes: ${data.likes || 0}`);
+                    text.setAttribute('position', '0 2.6 0');
+                    text.setAttribute('align', 'center');
+                    text.setAttribute('side', 'double');
+                    text.setAttribute('color', 'white');
+                    text.setAttribute('width', '4');
+                    avatar.appendChild(text);
                     
+                    // Store animation state
+                    avatar.userData = {
+                        type: type,
+                        frame: 1,
+                        lastUpdate: Date.now(),
+                        isMoving: false,
+                        lastPosition: null
+                    };
+
                     scene.appendChild(avatar);
                     otherPlayers[data.userId] = avatar;
                 }
 
-                // Update their position and rotation
+                // Update position
                 const avatar = otherPlayers[data.userId];
-                if (data.position) avatar.setAttribute('position', data.position);
-                if (data.rotation) {
-                    // Only rotate around Y axis (left/right) to keep them upright
-                    avatar.setAttribute('rotation', `0 ${data.rotation.y} 0`);
+                
+                if (data.position) {
+                    // Calculate movement using stored lastPosition
+                    const lastPos = avatar.userData.lastPosition || data.position;
+                    
+                    const dx = data.position.x - lastPos.x;
+                    const dz = data.position.z - lastPos.z;
+                    const dist = Math.sqrt(dx*dx + dz*dz);
+                    
+                    // Update position in scene
+                    avatar.setAttribute('position', data.position);
+                    
+                    // Update stored last position (clone it)
+                    avatar.userData.lastPosition = { x: data.position.x, y: data.position.y, z: data.position.z };
+
+                    const img = avatar.querySelector('a-image');
+                    const type = avatar.userData.type;
+                    
+                    // Threshold check (lowered to 0.002 to catch small movements)
+                    if (dist > 0.002) { 
+                        // Cycle frames every 150ms
+                        const now = Date.now();
+                        if (now - avatar.userData.lastUpdate > 150) {
+                            avatar.userData.frame = (avatar.userData.frame % 4) + 1;
+                            img.setAttribute('src', `/static/avatars/${type}/${type}_Walking_${avatar.userData.frame}.png`);
+                            avatar.userData.lastUpdate = now;
+                        }
+                    } else {
+                        // Idle
+                        img.setAttribute('src', `/static/avatars/${type}/${type}_Walking_Front.png`);
+                    }
                 }
             }
 
@@ -256,6 +407,7 @@
                             userId: myId,
                             username: myUsername,
                             likes: myTotalLikes,
+                            avatarType: myAvatarType,
                             position: pos,
                             rotation: rot,
                             color: '#4CC3D9' 
@@ -366,6 +518,9 @@
         // --- LOAD ARTIFACTS FROM API ---
         let currentEra = 'Modern';
         let artifactLocations = []; // Store locations for proximity check
+        const mode = "{{ mode|default('public') }}";
+        const targetUser = "{{ target_username|default('') }}";
+        const initialTheme = "{{ theme|default('starry') }}";
 
         function loadArtifacts(era) {
             const container = document.querySelector('#gallery-container');
@@ -377,8 +532,12 @@
             artifactLocations = []; // Reset locations
 
             let url = '/artifacts_json';
-            if (era) {
-                url += `?era=${era}`;
+            if (mode === 'personal') {
+                url = `/museum/api/${targetUser}/artifacts`;
+            } else {
+                if (era) {
+                    url += `?era=${era}`;
+                }
             }
 
             fetch(url) 
@@ -389,7 +548,7 @@
                     
                     if (artifacts.length === 0) {
                         const msg = document.createElement('a-text');
-                        msg.setAttribute('value', `No artifacts found in the ${era} era.`);
+                        msg.setAttribute('value', mode === 'personal' ? 'No artifacts placed yet.' : `No artifacts found in the ${era} era.`);
                         msg.setAttribute('position', '0 2 -3');
                         msg.setAttribute('align', 'center');
                         msg.setAttribute('color', 'white');
@@ -398,19 +557,28 @@
                     }
 
                     artifacts.forEach((art, index) => {
-                        // Calculate position
-                        // Staggered: Left (-3), Right (3), Left (-3)...
-                        // Moving forward in -Z direction
-                        const side = index % 2 === 0 ? -3 : 3;
-                        const zPos = -index * 4; // 4 meters apart
-                        console.log(`Placing artifact ${index}: ${art.title} at ${side} 0 ${zPos}`);
-                        const rotation = index % 2 === 0 ? 45 : -45; // Angled towards center path
+                        let x, y, z, rot;
+                        
+                        if (mode === 'personal' && art.position) {
+                            x = art.position.x;
+                            y = art.position.y;
+                            z = art.position.z;
+                            rot = art.rotation ? art.rotation.y : 0;
+                        } else {
+                            // Default procedural layout
+                            x = index % 2 === 0 ? -3 : 3;
+                            z = -index * 4; // 4 meters apart
+                            y = 0;
+                            rot = index % 2 === 0 ? 45 : -45;
+                        }
+                        
+                        console.log(`Placing artifact ${index}: ${art.title} at ${x} ${y} ${z}`);
                         
                         // Store location for proximity check
                         artifactLocations.push({
                             id: art.id,
-                            x: side,
-                            z: zPos,
+                            x: x,
+                            z: z,
                             title: art.title,
                             description: art.description,
                             spotlightId: `spot-${index}`
@@ -418,8 +586,14 @@
 
                         // Create a "Pedestal/Wall" Group
                         const group = document.createElement('a-entity');
-                        group.setAttribute('position', `${side} 0 ${zPos}`);
-                        group.setAttribute('rotation', `0 ${rotation} 0`);
+                        group.setAttribute('position', `${x} ${y} ${z}`);
+                        group.setAttribute('rotation', `0 ${rot} 0`);
+                        group.setAttribute('id', `art-group-${art.id}`);
+                        
+                        // Add class for raycasting if editing
+                        if (mode === 'personal' && "{{ is_owner }}" === "True") {
+                            group.setAttribute('class', 'editable');
+                        }
 
                         // 1. The Wall/Stand (Sleek Dark Monolith)
                         const wall = document.createElement('a-box');
@@ -465,6 +639,10 @@
                         
                         // Interaction
                         image.addEventListener('click', () => {
+                            if (isEditMode) {
+                                selectArtifactForEdit(group, art.id);
+                                return;
+                            }
                             // Exit pointer lock to navigate
                             document.exitPointerLock();
                             
@@ -576,7 +754,17 @@
             
             // Update Audio Ambience
             updateAmbience(era);
+            
+            // Update WebSocket Room
+            if (window.connectToRoom) {
+                window.connectToRoom(`public_${era}`);
+            }
 
+            updateEnvironment(era);
+            loadArtifacts(era);
+        }
+        
+        function updateEnvironment(theme) {
             const env = document.getElementById('env');
             const ambient = document.getElementById('ambient-light');
             const point = document.getElementById('point-light');
@@ -584,32 +772,32 @@
             // Define environment settings
             let envSettings = {};
 
-            if (era === 'Ancient') {
+            if (theme === 'Ancient' || theme === 'egypt') {
                 envSettings = {preset: 'egypt', groundColor: '#C2B280', lighting: 'none'};
                 ambient.setAttribute('color', '#ffaa00');
                 ambient.setAttribute('intensity', '0.2');
                 point.setAttribute('color', '#ffaa00');
                 point.setAttribute('intensity', '0.8');
-            } else if (era === 'Medieval') {
+            } else if (theme === 'Medieval' || theme === 'forest') {
                 envSettings = {preset: 'forest', groundColor: '#2E8B57', lighting: 'none'};
                 ambient.setAttribute('color', '#aaa');
                 ambient.setAttribute('intensity', '0.3');
                 point.setAttribute('color', '#fff');
                 point.setAttribute('intensity', '0.5');
-            } else if (era === 'Industrial') {
-                envSettings = {preset: 'arches', fog: 0.6, groundColor: '#555', lighting: 'none'};
+            } else if (theme === 'Industrial' || theme === 'japan') {
+                envSettings = {preset: 'japan', fog: 0.6, groundColor: '#555', lighting: 'none'};
                 ambient.setAttribute('color', '#888');
                 ambient.setAttribute('intensity', '0.4');
                 point.setAttribute('color', '#ffccaa'); // Smoggy sun
                 point.setAttribute('intensity', '0.6');
-            } else if (era === 'Future') {
+            } else if (theme === 'Future' || theme === 'tron') {
                 envSettings = {preset: 'tron', grid: '1x1', gridColor: '#00ff00', lighting: 'none'};
                 ambient.setAttribute('color', '#000033');
                 ambient.setAttribute('intensity', '0.5');
                 point.setAttribute('color', '#00ffff');
                 point.setAttribute('intensity', '0.8');
             } else {
-                // Modern (Default)
+                // Modern / Starry (Default)
                 envSettings = {preset: 'starry', groundColor: '#0a0a0a', grid: '1x1', gridColor: '#333', lighting: 'distant'};
                 ambient.setAttribute('color', '#444');
                 ambient.setAttribute('intensity', '0.4');
@@ -619,8 +807,174 @@
 
             // Update environment component safely
             env.setAttribute('environment', envSettings);
+        }
 
-            loadArtifacts(era);
+        // --- EDIT MODE LOGIC ---
+        let isEditMode = false;
+        let selectedGroup = null;
+        let selectedArtifactId = null;
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btn = document.getElementById('edit-btn');
+            if (isEditMode) {
+                btn.innerText = "💾 Save Layout";
+                btn.style.background = "#4CAF50";
+                // Show instructions
+                alert("Click an artifact to select it. Use WASD to move it. Press R to rotate.");
+            } else {
+                btn.innerText = "✏️ Edit Layout";
+                btn.style.background = "#e91e63";
+                selectedGroup = null;
+                selectedArtifactId = null;
+            }
+        }
+
+        function selectArtifactForEdit(group, id) {
+            if (selectedGroup) {
+                // Deselect previous
+                selectedGroup.querySelector('a-box').setAttribute('color', '#1a1a1a'); // Reset color
+            }
+            selectedGroup = group;
+            selectedArtifactId = id;
+            // Highlight
+            selectedGroup.querySelector('a-box').setAttribute('color', '#e91e63');
+        }
+
+        function updateTheme(theme) {
+            updateEnvironment(theme);
+            // Save to backend
+            fetch('/museum/api/update_theme', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({theme: theme})
+            });
+        }
+
+        // Keyboard controls for editing
+        document.addEventListener('keydown', (e) => {
+            if (!isEditMode || !selectedGroup) return;
+
+            const pos = selectedGroup.getAttribute('position');
+            const rot = selectedGroup.getAttribute('rotation');
+            const step = 0.5;
+
+            switch(e.key) {
+                case 'ArrowUp': pos.z -= step; break;
+                case 'ArrowDown': pos.z += step; break;
+                case 'ArrowLeft': pos.x -= step; break;
+                case 'ArrowRight': pos.x += step; break;
+                case 'r': rot.y += 45; break;
+            }
+
+            selectedGroup.setAttribute('position', pos);
+            selectedGroup.setAttribute('rotation', rot);
+
+            // Save changes
+            fetch('/museum/api/update_layout', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    artifact_id: selectedArtifactId,
+                    position: pos,
+                    rotation: {y: rot.y},
+                    is_placed: true
+                })
+            });
+        });
+
+        // --- INVENTORY LOGIC ---
+        function toggleInventory() {
+            const panel = document.getElementById('inventory-panel');
+            if (!panel) return;
+            
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                document.exitPointerLock(); // Release mouse
+                loadInventory();
+            } else {
+                panel.style.display = 'none';
+                // Optional: re-lock pointer
+                const canvas = document.querySelector('a-scene').canvas;
+                if (canvas) canvas.requestPointerLock();
+            }
+        }
+
+        function loadInventory() {
+            const list = document.getElementById('inventory-list');
+            list.innerHTML = '<div style="color: #ccc; grid-column: 1/-1; text-align: center;">Loading...</div>';
+            
+            // Use the targetUser variable which is set in the template
+            fetch(`/museum/api/${targetUser}/inventory`)
+                .then(res => res.json())
+                .then(items => {
+                    list.innerHTML = '';
+                    if (items.length === 0) {
+                        list.innerHTML = '<div style="color: #ccc; grid-column: 1/-1; text-align: center;">No items in inventory. Upload more artifacts!</div>';
+                        return;
+                    }
+                    
+                    items.forEach(item => {
+                        const div = document.createElement('div');
+                        div.style.background = '#333';
+                        div.style.padding = '10px';
+                        div.style.borderRadius = '5px';
+                        div.style.cursor = 'pointer';
+                        div.style.textAlign = 'center';
+                        div.onclick = () => placeArtifact(item.id);
+                        
+                        div.innerHTML = `
+                            <img src="${item.media_url}" style="width: 100%; height: 100px; object-fit: cover; margin-bottom: 5px;">
+                            <div style="color: white; font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.title}</div>
+                        `;
+                        
+                        // Hover effect
+                        div.onmouseenter = () => div.style.background = '#444';
+                        div.onmouseleave = () => div.style.background = '#333';
+                        
+                        list.appendChild(div);
+                    });
+                })
+                .catch(err => {
+                    console.error(err);
+                    list.innerHTML = '<div style="color: red; grid-column: 1/-1; text-align: center;">Error loading inventory.</div>';
+                });
+        }
+
+        function placeArtifact(id) {
+            // 1. Calculate position in front of player
+            const rig = document.querySelector('#my-camera-rig');
+            const camera = document.querySelector('#my-camera');
+            
+            // Get rig position and camera rotation
+            const rigPos = rig.getAttribute('position');
+            const camRot = camera.getAttribute('rotation');
+            
+            // Calculate 3 meters in front based on Y rotation
+            // A-Frame rotation is in degrees. 0 is -Z.
+            // sin(0) = 0, cos(0) = 1. x=0, z=-3. Correct.
+            const angle = camRot.y * (Math.PI / 180);
+            const dist = 3;
+            
+            const x = rigPos.x - Math.sin(angle) * dist;
+            const z = rigPos.z - Math.cos(angle) * dist;
+            const y = 0; // Floor level
+            
+            // 2. Send to API
+            fetch('/museum/api/update_layout', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    artifact_id: id,
+                    position: {x: x, y: y, z: z},
+                    rotation: {y: camRot.y},
+                    is_placed: true
+                })
+            }).then(() => {
+                // Close inventory and reload
+                toggleInventory();
+                loadArtifacts(); // Reloads all placed artifacts
+            });
         }
 
         // --- PROXIMITY LOOP (Lighting & Narrative) ---
@@ -701,7 +1055,12 @@
 
 
         // Initial Load
-        loadArtifacts('Modern');
+        if (mode === 'personal') {
+            updateEnvironment(initialTheme);
+            loadArtifacts();
+        } else {
+            loadArtifacts('Modern');
+        }
 
 
         // --- AI TOUR LOGIC ---

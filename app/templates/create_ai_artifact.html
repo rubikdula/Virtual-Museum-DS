@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                <div class="card-header bg-dark text-white p-4 text-center" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                    <h2 class="fw-bold mb-0">✨ AI Artifact Generator</h2>
+                    <p class="mb-0 opacity-75">Describe your imagination, and we'll build it.</p>
+                </div>
+                <div class="card-body p-5">
+                    <form id="ai-form" action="/artifacts/generate-ai" method="post">
+                        <div class="mb-4">
+                            <label for="prompt" class="form-label fw-bold">What do you want to create?</label>
+                            <textarea class="form-control form-control-lg" id="prompt" name="prompt" rows="4" 
+                                placeholder="e.g. A futuristic smart bicycle from 2080, eco-friendly, neon lights, cyberpunk style..." required></textarea>
+                            <div class="form-text">Be descriptive! The AI will generate an image and a full museum entry based on this.</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" id="generate-btn" class="btn btn-primary btn-lg fw-bold" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                                <i class="bi bi-magic"></i> Generate Artifact
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Loading State -->
+                    <div id="loading-state" class="text-center mt-5" style="display: none;">
+                        <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;"></div>
+                        <h4 class="fw-bold">Dreaming up your artifact...</h4>
+                        <p class="text-muted">Generating image and writing history. This takes about 10-15 seconds.</p>
+                        <div class="progress mt-3" style="height: 5px;">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('ai-form').addEventListener('submit', function() {
+        document.getElementById('ai-form').style.display = 'none';
+        document.getElementById('loading-state').style.display = 'block';
+    });
+</script>
+{% endblock %}

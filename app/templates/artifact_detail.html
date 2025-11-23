@@ -36,6 +36,9 @@
                 <h1 class="display-4 fw-bold mb-3" style="letter-spacing: -2px;">{{ artifact.title }}</h1>
                 
                 <div class="mb-4">
+                    {% if "AI Generated" in (artifact.tags or "") %}
+                        <span class="badge bg-warning text-dark me-2 shadow-sm">✨ AI Generated</span>
+                    {% endif %}
                     <span class="text-uppercase fw-bold text-muted">{{ artifact.category }}</span>
                     {% if artifact.year %}
                         <span class="text-muted mx-2">|</span>
@@ -81,8 +84,86 @@
                     </div>
                     {% endif %}
                 </div>
+
+                <!-- AI Knowledge Expander -->
+                <div class="mt-5 p-4 bg-light border rounded-3">
+                    <h4 class="fw-bold text-success mb-3">
+                        <i class="bi bi-robot"></i> AI Knowledge Expander
+                    </h4>
+                    <div id="ai-loading" class="text-muted fst-italic">
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                        Analyzing artifact connections...
+                    </div>
+                    <div id="ai-content" style="display: none;">
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-uppercase small text-muted">Historical Connection</h6>
+                            <p id="ai-fact" class="mb-0"></p>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <h6 class="fw-bold text-uppercase small text-muted">Related Inventions</h6>
+                            <ul id="ai-inventions" class="ps-3 mb-0"></ul>
+                        </div>
+
+                        <div>
+                            <h6 class="fw-bold text-uppercase small text-muted">Similar Artifacts</h6>
+                            <ul id="ai-similar" class="list-unstyled mb-0"></ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const artifactId = {{ artifact.id }};
+    
+    fetch(`/api/ai/enrich/${artifactId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('ai-loading').style.display = 'none';
+            document.getElementById('ai-content').style.display = 'block';
+            
+            // Fact
+            document.getElementById('ai-fact').innerText = data.ai_analysis.historical_connection;
+            
+            // Inventions
+            const invList = document.getElementById('ai-inventions');
+            if (data.ai_analysis.related_inventions) {
+                data.ai_analysis.related_inventions.forEach(inv => {
+                    const li = document.createElement('li');
+                    li.innerText = inv;
+                    invList.appendChild(li);
+                });
+            }
+            
+            // Similar Artifacts
+            const simList = document.getElementById('ai-similar');
+            if (data.similar_artifacts && data.similar_artifacts.length > 0) {
+                data.similar_artifacts.forEach(sim => {
+                    const li = document.createElement('li');
+                    li.className = "mb-2";
+                    li.innerHTML = `
+                        <a href="/artifact/${sim.id}" class="text-decoration-none fw-bold text-dark">
+                            ${sim.title}
+                        </a>
+                        <span class="badge bg-secondary ms-2">${sim.era}</span>
+                        <small class="text-muted d-block">${(sim.similarity * 100).toFixed(0)}% Match</small>
+                    `;
+                    simList.appendChild(li);
+                });
+            } else {
+                simList.innerHTML = '<li class="text-muted small">No similar artifacts found.</li>';
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('ai-loading').innerText = "Failed to load AI analysis.";
+        });
+});
+</script>
 {% endblock %}

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Float, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -10,6 +10,7 @@ class User(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    museum_theme = Column(String, default="starry") # Personal museum theme
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     artifacts = relationship("Artifact", back_populates="creator")
@@ -31,6 +32,14 @@ class Artifact(Base):
     media_url = Column(String) # URL or file path
     views_count = Column(Integer, default=0)
     likes_count = Column(Integer, default=0)
+    
+    # Personal Museum Placement
+    pos_x = Column(Float, default=0.0)
+    pos_y = Column(Float, default=2.0)
+    pos_z = Column(Float, default=0.0)
+    rot_y = Column(Float, default=0.0)
+    is_placed = Column(Boolean, default=False)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
