@@ -75,6 +75,8 @@ async def artifact_detail(
     db.commit()
     
     is_liked = False
+    collection_status = "none" # none, pending, approved
+
     if current_user:
         existing_like = db.query(models.Like).filter(
             models.Like.user_id == current_user.id,
@@ -82,12 +84,25 @@ async def artifact_detail(
         ).first()
         if existing_like:
             is_liked = True
+            
+        # Check collection status
+        collection_entry = db.query(models.Collection).filter(
+            models.Collection.user_id == current_user.id,
+            models.Collection.artifact_id == artifact_id
+        ).first()
+        
+        if collection_entry:
+            if collection_entry.is_approved:
+                collection_status = "approved"
+            else:
+                collection_status = "pending"
 
     return templates.TemplateResponse("artifact_detail.html", {
         "request": request, 
         "artifact": artifact, 
         "user": current_user,
-        "is_liked": is_liked
+        "is_liked": is_liked,
+        "collection_status": collection_status
     })
 
 @router.get("/upload")

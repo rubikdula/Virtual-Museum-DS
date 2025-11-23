@@ -82,3 +82,22 @@ class Notification(Base):
     sender = relationship("User", foreign_keys=[sender_id], backref="notifications_sent")
     artifact = relationship("Artifact")
 
+class Collection(Base):
+    __tablename__ = "collections"
+
+    user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
+    artifact_id = Column(Integer, ForeignKey("artifacts.id"), primary_key=True)
+    is_approved = Column(Boolean, default=False)
+    
+    # Placement in the collector's museum
+    pos_x = Column(Float, default=0.0)
+    pos_y = Column(Float, default=2.0)
+    pos_z = Column(Float, default=0.0)
+    rot_y = Column(Float, default=0.0)
+    is_placed = Column(Boolean, default=False)
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User", backref="collections")
+    artifact = relationship("Artifact", backref="collected_by")
+

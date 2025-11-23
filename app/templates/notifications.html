@@ -8,7 +8,7 @@
             
             <div class="list-group shadow-sm rounded-4 overflow-hidden">
                 {% for notif in notifications %}
-                <a href="/artifact/{{ notif.artifact_id }}" class="list-group-item list-group-item-action p-4 border-0 border-bottom">
+                <div class="list-group-item list-group-item-action p-4 border-0 border-bottom">
                     <div class="d-flex align-items-center gap-3">
                         <div class="position-relative">
                             <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ notif.sender.username }}" 
@@ -21,11 +21,22 @@
                                 <span class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 20px; height: 20px; font-size: 10px;">
                                     <i class="bi bi-chat-fill"></i>
                                 </span>
+                            {% elif notif.type == 'collection_request' %}
+                                <span class="position-absolute bottom-0 end-0 bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center" style="width: 20px; height: 20px; font-size: 10px;">
+                                    <i class="bi bi-collection-fill"></i>
+                                </span>
                             {% endif %}
                         </div>
                         <div class="flex-grow-1">
                             <p class="mb-1">{{ notif.message }}</p>
                             <small class="text-muted">{{ notif.created_at.strftime('%B %d, %H:%M') }}</small>
+                            
+                            {% if notif.type == 'collection_request' %}
+                            <div class="mt-2">
+                                <button onclick="handleRequest({{ notif.id }}, 'approve')" class="btn btn-sm btn-success me-2">Approve</button>
+                                <button onclick="handleRequest({{ notif.id }}, 'decline')" class="btn btn-sm btn-danger">Decline</button>
+                            </div>
+                            {% endif %}
                         </div>
                         {% if notif.artifact.media_type == 'image' %}
                             <img src="{{ notif.artifact.media_url }}" class="rounded" width="50" height="50" style="object-fit: cover;">
@@ -35,7 +46,7 @@
                             </div>
                         {% endif %}
                     </div>
-                </a>
+                </div>
                 {% else %}
                 <div class="text-center py-5">
                     <i class="bi bi-bell-slash display-1 text-muted mb-3"></i>
@@ -46,4 +57,25 @@
         </div>
     </div>
 </div>
+
+<script>
+    function handleRequest(notifId, action) {
+        fetch(`/artifacts/collection/${action}/${notifId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
+            location.reload();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred.');
+        });
+    }
+</script>
+
 {% endblock %}

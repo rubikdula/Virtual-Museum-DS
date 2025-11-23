@@ -332,3 +332,136 @@ async def generate_ai_artifact(
     db.refresh(new_artifact)
     
     return RedirectResponse(url=f"/artifact/{new_artifact.id}", status_code=303)
+
+@router.post("/{id}/request_collection")
+def request_collection(
+    id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    artifact = db.query(models.Artifact).filter(models.Artifact.id == id).first()
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    if artifact.creator_id == current_user.id:
+        raise HTTPException(status_code=400, detail="You cannot collect your own artifact (you already own it).")
+
+    # Check if already collected or requested
+    existing = db.query(models.Collection).filter(
+        models.Collection.user_id == current_user.id,
+        models.Collection.artifact_id == id
+    ).first()
+
+    if existing:
+        if existing.is_approved:
+            return {"message": "Already in your collection."}
+        else:
+            return {"message": "Request already pending."}
+
+    # Create Collection Request
+    new_collection = models.Collection(
+        user_id=current_user.id,
+        artifact_id=id,
+        is_approved=False
+    )
+    db.add(new_collection)
+    
+    # Create Notification for Owner
+    notification = models.Notification(
+        recipient_id=artifact.creator_id,
+        sender_id=current_user.id,
+        artifact_id=id,
+        type="collection_request",
+        message=f"{current_user.username} wants to add '{artifact.title}' to their collection."
+    )
+    db.add(notification)
+    db.commit()
+
+    return {"message": "Collection request sent to the owner."}
+
+@router.post("/collection/approve/{notification_id}")
+def approve_collection(
+    notification_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    notification = db.query(models.Notification).filter(models.Notification.id == notification_id).first()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    if notification.recipient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Find the collection entry
+    # The sender of the notification is the one who requested the collection
+    requester_id = notification.sender_id
+    artifact_id = notification.artifact_id
+
+    collection_entry = db.query(models.Collection).filter(
+        models.Collection.user_id == requester_id,
+        models.Collection.artifact_id == artifact_id
+    ).first()
+
+    if collection_entry:
+        collection_entry.is_approved = True
+        
+        # Notify the requester
+        approval_notif = models.Notification(
+            recipient_id=requester_id,
+            sender_id=current_user.id,
+            artifact_id=artifact_id,
+            type="collection_approved",
+            message=f"{current_user.username} approved your request to collect '{notification.artifact.title}'."
+        )
+        db.add(approval_notif)
+
+    # Mark notification as read or delete it? Let's mark as read and maybe update type to indicate handled
+    notification.is_read = True
+    notification.type = "request_handled" # Prevent double approval
+    
+    db.commit()
+    return {"message": "Request approved"}
+
+@router.post("/collection/decline/{notification_id}")
+def decline_collection(
+    notification_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    notification = db.query(models.Notification).filter(models.Notification.id == notification_id).first()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+    
+    if notification.recipient_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    requester_id = notification.sender_id
+    artifact_id = notification.artifact_id
+
+    # Delete the collection entry
+    collection_entry = db.query(models.Collection).filter(
+        models.Collection.user_id == requester_id,
+        models.Collection.artifact_id == artifact_id
+    ).first()
+
+    if collection_entry:
+        db.delete(collection_entry)
+
+    # Notify the requester
+    decline_notif = models.Notification(
+        recipient_id=requester_id,
+        sender_id=current_user.id,
+        artifact_id=artifact_id,
+        type="collection_declined",
+        message=f"{current_user.username} declined your request to collect '{notification.artifact.title}'."
+    )
+    db.add(decline_notif)
+
+    notification.is_read = True
+    notification.type = "request_handled"
+    
+    db.commit()
+    return {"message": "Request declined"}

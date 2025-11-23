@@ -108,11 +108,19 @@
                     </form>
                     
                     {% if user and user.id != artifact.creator_id %}
-                    <form action="/artifacts/{{ artifact.id }}/collect" method="post" class="mt-2">
-                        <button type="submit" class="btn btn-outline-dark w-100 btn-lg rounded-0 text-uppercase fw-bold" style="letter-spacing: 1px;">
-                            <i class="bi bi-plus-circle me-2"></i> Collect
-                        </button>
-                    </form>
+                        {% if collection_status == 'approved' %}
+                            <button class="btn btn-success w-100 btn-lg rounded-0 text-uppercase fw-bold mt-2" disabled>
+                                <i class="bi bi-check-circle me-2"></i> Collected
+                            </button>
+                        {% elif collection_status == 'pending' %}
+                            <button class="btn btn-warning w-100 btn-lg rounded-0 text-uppercase fw-bold mt-2" disabled>
+                                <i class="bi bi-hourglass-split me-2"></i> Request Pending
+                            </button>
+                        {% else %}
+                            <button onclick="requestCollection({{ artifact.id }})" class="btn btn-outline-dark w-100 btn-lg rounded-0 text-uppercase fw-bold mt-2" style="letter-spacing: 1px;">
+                                <i class="bi bi-plus-circle me-2"></i> Request to Collect
+                            </button>
+                        {% endif %}
                     {% endif %}
                     
                     {% if user and user.id == artifact.creator_id %}
@@ -215,5 +223,20 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('ai-loading').innerText = "Failed to load AI analysis.";
         });
 });
+
+function requestCollection(id) {
+    fetch(`/artifacts/${id}/request_collection`, {
+        method: 'POST'
+    })
+    .then(res => res.json())
+    .then(data => {
+        alert(data.message);
+        location.reload();
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error sending request.");
+    });
+}
 </script>
 {% endblock %}

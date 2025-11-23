@@ -227,6 +227,7 @@
             
             <div>
                 <a id="popup-link" href="#" class="hud-btn">View Full Details</a>
+                <button id="collect-btn" onclick="requestCollection()" class="hud-btn" style="background: #9c27b0; margin-left: 10px;">Request to Collect</button>
             </div>
 
             <div id="ai-analysis-section" style="margin-top: 20px; border-top: 2px solid #eee; padding-top: 20px; text-align: left; font-family: 'Helvetica Neue', sans-serif;">
@@ -855,6 +856,7 @@
                             document.exitPointerLock();
                             
                             // Populate Popup
+                            currentArtifactId = art.id; // Set current ID for collection
                             document.getElementById('popup-title').innerText = art.title;
                             document.getElementById('popup-image').src = art.media_url;
                             document.getElementById('popup-desc').innerText = art.description || "No description available.";
@@ -1383,6 +1385,24 @@
                     });
                 }
             }
+        }
+
+        let currentArtifactId = null;
+
+        function requestCollection() {
+            if (!currentArtifactId) return;
+            
+            fetch(`/artifacts/${currentArtifactId}/request_collection`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(err => {
+                console.error(err);
+                alert("Error sending request.");
+            });
         }
     </script>
 </body>
