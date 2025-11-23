@@ -155,8 +155,8 @@
                     {% endif %}
 
                     <!-- Comments Preview -->
-                    {% if artifact.comments %}
-                        <div class="mb-2">
+                    <div class="mb-2 comments-preview-{{ artifact.id }}">
+                        {% if artifact.comments %}
                             <a href="/artifact/{{ artifact.id }}" class="text-muted small text-decoration-none">
                                 View all {{ artifact.comments|length }} comments
                             </a>
@@ -165,16 +165,15 @@
                                 <span class="fw-bold">{{ comment.user.username }}</span> {{ comment.text }}
                             </div>
                             {% endfor %}
-                        </div>
-                    {% endif %}
+                        {% endif %}
+                    </div>
                     
                     <div class="mt-1 mb-3">
                         <small class="text-muted text-uppercase" style="font-size: 0.65rem;">{{ artifact.created_at.strftime('%B %d') }}</small>
                     </div>
 
                     <!-- Add Comment Form -->
-                    <form action="/artifacts/{{ artifact.id }}/comment" method="post" class="border-top pt-3">
-                        <input type="hidden" name="redirect_to" value="{{ request.url }}">
+                    <form onsubmit="postComment(event, {{ artifact.id }})" class="border-top pt-3">
                         <div class="input-group">
                             <input type="text" id="comment-input-{{ artifact.id }}" name="text" class="form-control border-0 bg-transparent px-0" placeholder="Add a comment..." required style="box-shadow: none;">
                             <button class="btn btn-link text-primary fw-bold text-decoration-none p-0" type="submit">Post</button>
@@ -232,6 +231,47 @@ async function toggleLike(artifactId, btn) {
         }
     } catch (error) {
         console.error('Error liking artifact:', error);
+    }
+}
+
+async function postComment(event, artifactId) {
+    event.preventDefault();
+    const form = event.target;
+    const input = form.querySelector('input[name="text"]');
+    const text = input.value;
+    
+    try {
+        const formData = new FormData();
+        formData.append('text', text);
+        
+        const response = await fetch(`/artifacts/${artifactId}/comment`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            },
+            body: formData
+        });
+        
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            input.value = ''; // Clear input
+            
+            // Add comment to preview
+            const previewContainer = document.querySelector(`.comments-preview-${artifactId}`);
+            const newCommentHtml = `
+                <div class="small mt-1">
+                    <span class="fw-bold">${data.comment.username}</span> ${data.comment.text}
+                </div>
+            `;
+            previewContainer.insertAdjacentHTML('beforeend', newCommentHtml);
+        }
+    } catch (error) {
+        console.error('Error posting comment:', error);
     }
 }
 </script>

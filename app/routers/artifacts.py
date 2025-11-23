@@ -153,6 +153,7 @@ async def like_artifact(
 
 @router.post("/{artifact_id}/comment")
 async def create_comment(
+    request: Request,
     artifact_id: int,
     text: str = Form(...),
     redirect_to: str = Form(None),
@@ -160,6 +161,8 @@ async def create_comment(
     current_user: models.User = Depends(get_current_user)
 ):
     if not current_user:
+        if request.headers.get("accept") == "application/json":
+            raise HTTPException(status_code=401, detail="Login required")
         return RedirectResponse(url="/login", status_code=303)
     
     artifact = db.query(models.Artifact).filter(models.Artifact.id == artifact_id).first()
@@ -186,8 +189,19 @@ async def create_comment(
 
     db.commit()
     
+    if request.headers.get("accept") == "application/json":
+        return {
+            "success": True, 
+            "comment": {
+                "username": current_user.username,
+                "text": text,
+                "created_at": "Just now"
+            }
+        }
+
     if redirect_to:
         return RedirectResponse(url=redirect_to, status_code=303)
+    return RedirectResponse(url=f"/artifact/{artifact_id}", status_code=303)
     return RedirectResponse(url=f"/artifact/{artifact_id}", status_code=303)
 
 @router.post("/{artifact_id}/collect")

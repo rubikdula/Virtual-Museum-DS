@@ -29,6 +29,48 @@
                     <a href="{{ artifact.media_url }}" target="_blank" class="btn btn-primary">View {{ artifact.media_type }}</a>
                 </div>
             {% endif %}
+
+            <!-- Comments Section -->
+            <div class="mt-5">
+                <h3 class="fw-bold mb-4">Comments ({{ artifact.comments|length }})</h3>
+                
+                <!-- Comment Form -->
+                {% if user %}
+                <form action="/artifacts/{{ artifact.id }}/comment" method="post" class="mb-5">
+                    <div class="d-flex gap-3">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ user.username }}" class="rounded-circle border" width="40" height="40">
+                        <div class="flex-grow-1">
+                            <textarea name="text" class="form-control border-0 border-bottom rounded-0 bg-light p-3" rows="2" placeholder="Add a comment..." required></textarea>
+                            <div class="text-end mt-2">
+                                <button type="submit" class="btn btn-dark rounded-0 px-4">Post Comment</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                {% else %}
+                <div class="alert alert-light border mb-5">
+                    <a href="/login" class="fw-bold text-dark">Login</a> to leave a comment.
+                </div>
+                {% endif %}
+
+                <!-- Comments List -->
+                <div class="d-flex flex-column gap-4">
+                    {% for comment in artifact.comments|reverse %}
+                    <div class="d-flex gap-3">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ comment.user.username }}" class="rounded-circle border" width="40" height="40">
+                        <div>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="fw-bold">{{ comment.user.username }}</span>
+                                <small class="text-muted">{{ comment.created_at.strftime('%B %d, %Y') }}</small>
+                            </div>
+                            <p class="mb-0 mt-1">{{ comment.text }}</p>
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No comments yet. Be the first to share your thoughts!</p>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
         
         <div class="col-md-4 ps-md-5">
