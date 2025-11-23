@@ -43,15 +43,20 @@ async def home(
     # Get unique categories for filter dropdown
     categories = db.query(models.Artifact.category).distinct().all()
     categories = [c[0] for c in categories if c[0]]
+
+    liked_artifact_ids = []
+    if current_user:
+        likes = db.query(models.Like).filter(models.Like.user_id == current_user.id).all()
+        liked_artifact_ids = [like.artifact_id for like in likes]
     
     return templates.TemplateResponse("index.html", {
         "request": request, 
         "artifacts": artifacts, 
         "user": current_user,
         "search": search,
-        "selected_category": category,
+        "categories": categories,
         "selected_era": era,
-        "categories": categories
+        "liked_artifact_ids": liked_artifact_ids
     })
 
 @router.get("/artifact/{artifact_id}")
@@ -168,3 +173,28 @@ def get_artifacts_json(
             "era": art.era
         })
     return JSONResponse(content=data)
+
+@router.get("/notifications")
+async def notifications_page(
+    request: Request,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    notifications = db.query(models.Notification)\
+        .filter(models.Notification.recipient_id == current_user.id)\
+        .order_by(models.Notification.created_at.desc())\
+        .all()
+    
+    # Mark all as read
+    for notif in notifications:
+        notif.is_read = True
+    db.commit()
+    
+    return templates.TemplateResponse("notifications.html", {
+        "request": request,
+        "user": current_user,
+        "notifications": notifications
+    })

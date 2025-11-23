@@ -2,7 +2,7 @@
 
 {% block content %}
 <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
-<div class="container-fluid px-5 py-5 bg-white">
+<div class="container py-5">
     <div class="row">
         <div class="col-md-8">
             {% if artifact.media_type == 'image' %}
@@ -55,19 +55,27 @@
                 <div class="d-grid gap-2">
                     <form action="/artifacts/{{ artifact.id }}/like" method="post">
                         {% if is_liked %}
-                            <button type="submit" class="btn btn-outline-primary w-100 btn-lg">
-                                Unlike Artifact ({{ artifact.likes_count }})
+                            <button type="submit" class="btn btn-outline-dark w-100 btn-lg rounded-0 text-uppercase fw-bold">
+                                Unlike ({{ artifact.likes_count }})
                             </button>
                         {% else %}
-                            <button type="submit" class="btn btn-primary w-100 btn-lg">
-                                Like Artifact ({{ artifact.likes_count }})
+                            <button type="submit" class="btn btn-dark w-100 btn-lg rounded-0 text-uppercase fw-bold">
+                                Like ({{ artifact.likes_count }})
                             </button>
                         {% endif %}
                     </form>
                     
+                    {% if user and user.id != artifact.creator_id %}
+                    <form action="/artifacts/{{ artifact.id }}/collect" method="post" class="mt-2">
+                        <button type="submit" class="btn btn-outline-dark w-100 btn-lg rounded-0 text-uppercase fw-bold" style="letter-spacing: 1px;">
+                            <i class="bi bi-plus-circle me-2"></i> Collect
+                        </button>
+                    </form>
+                    {% endif %}
+                    
                     {% if user and user.id == artifact.creator_id %}
-                        <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Are you sure?');">
-                            <button type="submit" class="btn btn-outline-danger w-100">Delete Artifact</button>
+                        <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Are you sure?');" class="mt-2">
+                            <button type="submit" class="btn btn-outline-danger w-100 rounded-0 text-uppercase">Delete Artifact</button>
                         </form>
                     {% endif %}
                 </div>

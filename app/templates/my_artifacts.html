@@ -1,26 +1,52 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid px-5 py-5 bg-white">
-    <div class="row mb-5">
-        <div class="col-12">
-            <h1 class="display-4 fw-bold mb-2" style="letter-spacing: -2px;">My Collection</h1>
-            <p class="lead text-muted">Manage your contributions to the museum.</p>
+<div class="container py-5">
+    <!-- Profile Header -->
+    <div class="row mb-5 align-items-center justify-content-center">
+        <div class="col-md-3 text-center mb-3 mb-md-0">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ user.username }}" class="rounded-circle border border-1 border-secondary p-1" width="150" height="150" alt="Profile">
+        </div>
+        <div class="col-md-6">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <h2 class="fw-light mb-0">{{ user.username }}</h2>
+                <a href="/upload" class="btn btn-sm btn-light border fw-bold px-3">Edit Profile</a>
+                <a href="#" class="btn btn-sm btn-light border fw-bold px-3"><i class="bi bi-gear"></i></a>
+            </div>
+            <div class="d-flex gap-4 mb-4">
+                <div>
+                    <span class="fw-bold">{{ artifacts|length }}</span> posts
+                </div>
+                <div>
+                    <span class="fw-bold">128</span> followers
+                </div>
+                <div>
+                    <span class="fw-bold">54</span> following
+                </div>
+            </div>
+            <div>
+                <p class="mb-0 fw-bold">{{ user.username }}</p>
+                <p class="mb-0 text-muted">Digital Curator & Time Traveler 🕰️</p>
+                <p class="mb-0 text-muted">Welcome to my personal collection.</p>
+            </div>
         </div>
     </div>
 
-    <!-- Personal Museum Section -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="card text-white" style="background: linear-gradient(45deg, #1a1a1a, #2d9183);">
-                <div class="card-body p-5 text-center">
-                    <h2 class="display-5 fw-bold mb-3">Your Personal Metaverse Museum</h2>
-                    <p class="lead mb-4">Customize your own 3D space, arrange your artifacts, and invite friends!</p>
+    <!-- Personal Museum Section (Styled as a Highlight) -->
+    <div class="row mb-5 justify-content-center">
+        <div class="col-md-10">
+            <div class="card border-0 text-white overflow-hidden rounded-4" style="background: #000; position: relative;">
+                <!-- Abstract Background Pattern -->
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.3; background: radial-gradient(circle at 50% 50%, #4a4a4a 0%, #000 100%);"></div>
+                
+                <div class="card-body p-5 text-center position-relative">
+                    <h2 class="display-5 fw-bold mb-3 text-uppercase">Your Personal Metaverse</h2>
+                    <p class="lead mb-4 text-white-50">Customize your own 3D space, arrange your artifacts, and invite friends!</p>
                     
-                    <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+                    <div class="d-flex justify-content-center align-items-end gap-3 flex-wrap">
                         <div class="text-start">
-                            <label class="form-label small text-uppercase fw-bold text-white-50">Choose Room Style</label>
-                            <select id="museum-theme-select" class="form-select form-select-lg" style="min-width: 250px;">
+                            <label class="form-label small text-uppercase fw-bold text-white-50 mb-2">Choose Room Style</label>
+                            <select id="museum-theme-select" class="form-select form-select-lg rounded-0 border-0" style="min-width: 250px;">
                                 <option value="starry" {% if user.museum_theme == 'starry' %}selected{% endif %}>Starry Night</option>
                                 <option value="forest" {% if user.museum_theme == 'forest' %}selected{% endif %}>Enchanted Forest</option>
                                 <option value="egypt" {% if user.museum_theme == 'egypt' %}selected{% endif %}>Ancient Egypt</option>
@@ -29,9 +55,9 @@
                             </select>
                         </div>
                         
-                        <div class="mt-4"> <!-- Align with input -->
-                            <button onclick="enterMuseum()" class="btn btn-light btn-lg px-5 fw-bold shadow-lg">
-                                Enter 3D World 🚀
+                        <div>
+                            <button onclick="enterMuseum()" class="btn btn-light btn-lg px-5 rounded-0 fw-bold text-uppercase">
+                                Enter 3D World &rarr;
                             </button>
                         </div>
                     </div>
@@ -42,51 +68,59 @@
 
     <div class="artifact-grid">
         {% for artifact in artifacts %}
-        <div class="artifact-item" style="grid-column: span 4; background-color: #f8f9fa; border: 1px solid #eee;">
+        <div class="artifact-item">
+            <div class="artifact-img-wrapper">
             {% if artifact.media_type == 'image' %}
-                <div style="height: 250px; overflow: hidden;">
-                    <img src="{{ artifact.media_url }}" class="w-100 h-100" style="object-fit: cover;" alt="{{ artifact.title }}">
-                </div>
+                <img src="{{ artifact.media_url }}" class="artifact-img" alt="{{ artifact.title }}">
             {% elif artifact.media_type == '3d_model' %}
-                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height: 250px;">
+                <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
                     <div class="text-center">
                         <i class="bi bi-box-seam display-4"></i>
-                        <p class="mt-2 fw-bold">3D Model</p>
+                        <p class="mt-2 fw-bold text-uppercase">3D Model</p>
                     </div>
                 </div>
             {% elif artifact.media_type == 'video_url' %}
-                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height: 250px;">
+                 <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
                     <div class="text-center">
                         <i class="bi bi-play-circle display-4"></i>
-                        <p class="mt-2 fw-bold">Video</p>
+                        <p class="mt-2 fw-bold text-uppercase">Video</p>
                     </div>
                 </div>
             {% else %}
-                <div class="bg-light d-flex align-items-center justify-content-center text-muted" style="height: 250px;">
-                    <span class="fw-bold">{{ artifact.media_type|upper }}</span>
+                 <div class="d-flex align-items-center justify-content-center h-100 bg-light text-muted">
+                    <div class="text-center">
+                        <i class="bi bi-link-45deg display-4"></i>
+                        <p class="mt-2 fw-bold text-uppercase">Link</p>
+                    </div>
                 </div>
             {% endif %}
+            </div>
             
-            <div class="p-4">
-                <h3 class="fw-bold mb-2">{{ artifact.title }}</h3>
-                <p class="small text-muted mb-4">{{ artifact.short_description }}</p>
-                
-                <div class="d-flex justify-content-between align-items-center">
-                    <a href="/artifact/{{ artifact.id }}" class="btn btn-primary btn-sm px-4">View</a>
-                    <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Are you sure you want to delete this artifact?');" class="d-inline">
-                        <button type="submit" class="btn btn-outline-danger btn-sm px-4">Delete</button>
-                    </form>
+            <div class="artifact-content">
+                <div>
+                    <div class="artifact-title" style="font-size: 1.2rem;">{{ artifact.title }}</div>
+                    <p class="small text-muted mb-3 text-truncate">{{ artifact.short_description }}</p>
                 </div>
                 
-                <div class="mt-3 pt-3 border-top small text-muted">
-                    <strong>{{ artifact.views_count }}</strong> Views &bull; <strong>{{ artifact.likes_count }}</strong> Likes
+                <div class="mt-auto">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <a href="/artifact/{{ artifact.id }}" class="btn btn-sm btn-dark rounded-0 px-3">VIEW</a>
+                        <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Are you sure you want to delete this artifact?');" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-0 px-3">DELETE</button>
+                        </form>
+                    </div>
+                    <div class="small text-muted border-top pt-2 d-flex justify-content-between">
+                        <span>{{ artifact.views_count }} Views</span>
+                        <span>{{ artifact.likes_count }} Likes</span>
+                    </div>
                 </div>
             </div>
         </div>
         {% else %}
-        <div class="col-12 text-center py-5" style="grid-column: span 12;">
-            <h3 class="fw-bold">You haven't uploaded anything yet.</h3>
-            <a href="/upload" class="btn btn-primary mt-4 btn-lg">Upload Your First Artifact</a>
+        <div class="col-12 text-center py-5">
+            <h3 class="fw-bold text-uppercase">No artifacts yet</h3>
+            <p class="text-muted mb-4">Start building your collection today.</p>
+            <a href="/upload" class="btn btn-dark btn-lg rounded-0 px-5">UPLOAD ARTIFACT</a>
         </div>
         {% endfor %}
     </div>

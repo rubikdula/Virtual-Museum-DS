@@ -96,12 +96,16 @@ async def delete_artifact(
 
 @router.post("/{artifact_id}/like")
 async def like_artifact(
+    request: Request,
     artifact_id: int,
+    redirect_to: str = Form(None),
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     if not current_user:
-         return RedirectResponse(url="/login?error=Please login to like artifacts", status_code=303)
+        if request.headers.get("accept") == "application/json":
+            raise HTTPException(status_code=401, detail="Login required")
+        return RedirectResponse(url="/login?error=Please login to like artifacts", status_code=303)
 
     artifact = db.query(models.Artifact).filter(models.Artifact.id == artifact_id).first()
     if not artifact:
@@ -113,6 +117,7 @@ async def like_artifact(
         models.Like.artifact_id == artifact_id
     ).first()
 
+    is_liked = False
     if existing_like:
         # Already liked -> Unlike
         db.delete(existing_like)
@@ -123,11 +128,108 @@ async def like_artifact(
         new_like = models.Like(user_id=current_user.id, artifact_id=artifact_id)
         db.add(new_like)
         artifact.likes_count += 1
+        is_liked = True
+
+        # Create Notification
+        if artifact.creator_id != current_user.id:
+            notification = models.Notification(
+                recipient_id=artifact.creator_id,
+                sender_id=current_user.id,
+                artifact_id=artifact.id,
+                type="like",
+                message=f"{current_user.username} liked your artifact '{artifact.title}'"
+            )
+            db.add(notification)
     
     db.commit()
     
-    # Redirect back to the artifact page
+    if request.headers.get("accept") == "application/json":
+        return {"success": True, "likes_count": artifact.likes_count, "liked": is_liked}
+
+    # Redirect back
+    if redirect_to:
+        return RedirectResponse(url=redirect_to, status_code=303)
     return RedirectResponse(url=f"/artifact/{artifact_id}", status_code=303)
+
+@router.post("/{artifact_id}/comment")
+async def create_comment(
+    artifact_id: int,
+    text: str = Form(...),
+    redirect_to: str = Form(None),
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    artifact = db.query(models.Artifact).filter(models.Artifact.id == artifact_id).first()
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+        
+    new_comment = models.Comment(
+        artifact_id=artifact_id,
+        user_id=current_user.id,
+        text=text
+    )
+    db.add(new_comment)
+
+    # Create Notification
+    if artifact.creator_id != current_user.id:
+        notification = models.Notification(
+            recipient_id=artifact.creator_id,
+            sender_id=current_user.id,
+            artifact_id=artifact.id,
+            type="comment",
+            message=f"{current_user.username} commented: {text[:30]}..."
+        )
+        db.add(notification)
+
+    db.commit()
+    
+    if redirect_to:
+        return RedirectResponse(url=redirect_to, status_code=303)
+    return RedirectResponse(url=f"/artifact/{artifact_id}", status_code=303)
+
+@router.post("/{artifact_id}/collect")
+async def collect_artifact(
+    artifact_id: int,
+    db: Session = Depends(database.get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    original = db.query(models.Artifact).filter(models.Artifact.id == artifact_id).first()
+    if not original:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+
+    # Prevent collecting own artifacts (optional, but makes sense to avoid duplicates)
+    if original.creator_id == current_user.id:
+        # Just redirect back with a message? For now just redirect.
+        return RedirectResponse(url=f"/artifact/{artifact_id}", status_code=303)
+
+    # Create a copy
+    new_copy = models.Artifact(
+        title=original.title,
+        creator_id=current_user.id, # Now owned by the collector
+        short_description=original.short_description,
+        long_description=original.long_description,
+        year=original.year,
+        era=original.era,
+        category=original.category,
+        tags=f"{original.tags or ''}, Collected",
+        media_type=original.media_type,
+        media_url=original.media_url,
+        is_placed=False, # Goes to inventory
+        pos_x=0, pos_y=2, pos_z=0, rot_y=0
+    )
+    
+    db.add(new_copy)
+    db.commit()
+    
+    # Redirect to inventory or stay on page?
+    # Let's redirect to My Collection to show it's there
+    return RedirectResponse(url="/my-artifacts", status_code=303)
 
 @router.get("/create-ai")
 async def create_ai_page(request: Request, current_user: models.User = Depends(get_current_user)):

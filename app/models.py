@@ -64,3 +64,19 @@ class Like(Base):
     user_id = Column(Integer, ForeignKey("users.id"), primary_key=True)
     artifact_id = Column(Integer, ForeignKey("artifacts.id"), primary_key=True)
 
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipient_id = Column(Integer, ForeignKey("users.id"))
+    sender_id = Column(Integer, ForeignKey("users.id"))
+    artifact_id = Column(Integer, ForeignKey("artifacts.id"), nullable=True)
+    type = Column(String) # "like", "comment", "collect"
+    message = Column(String)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    recipient = relationship("User", foreign_keys=[recipient_id], backref="notifications_received")
+    sender = relationship("User", foreign_keys=[sender_id], backref="notifications_sent")
+    artifact = relationship("Artifact")
+

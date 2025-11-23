@@ -1,81 +1,238 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="container-fluid px-5 py-5 bg-white">
-    <div class="row mb-5 align-items-end">
-        <div class="col-md-8">
-            <h1 class="display-1 fw-bold mb-0" style="letter-spacing: -3px; line-height: 0.9;">Discover our<br>reimagined galleries</h1>
+<div class="container py-4">
+    <!-- Stories / Era Filter Bar -->
+    <div class="row justify-content-center mb-4">
+        <div class="col-md-8 col-lg-6">
+            <div class="d-flex gap-3 overflow-auto pb-2" style="scrollbar-width: none; -ms-overflow-style: none;">
+                <a href="/" class="text-decoration-none text-center">
+                    <div class="rounded-circle border border-2 {{ 'border-primary' if not selected_era else 'border-secondary' }} p-1 mb-1" style="width: 64px; height: 64px;">
+                        <div class="w-100 h-100 rounded-circle bg-dark d-flex align-items-center justify-content-center text-white small fw-bold">ALL</div>
+                    </div>
+                    <span class="small text-muted fw-bold">All Time</span>
+                </a>
+                {% for era_name in ['Ancient', 'Medieval', 'Industrial', 'Modern', 'Future'] %}
+                <a href="/?era={{ era_name }}" class="text-decoration-none text-center">
+                    <div class="rounded-circle border border-2 {{ 'border-primary' if selected_era == era_name else 'border-secondary' }} p-1 mb-1" style="width: 64px; height: 64px;">
+                        <div class="w-100 h-100 rounded-circle bg-light d-flex align-items-center justify-content-center text-dark small fw-bold" 
+                             style="background-image: url('https://source.unsplash.com/random/100x100/?{{ era_name }}'); background-size: cover;">
+                             <!-- Fallback text if image fails or just overlay -->
+                             <span style="text-shadow: 0 0 3px white;">{{ era_name[0] }}</span>
+                        </div>
+                    </div>
+                    <span class="small text-muted fw-bold">{{ era_name }}</span>
+                </a>
+                {% endfor %}
+            </div>
         </div>
-        <div class="col-md-4">
-            <form action="/" method="get" class="w-100">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control border-black rounded-0" placeholder="Search artifacts..." value="{{ search or '' }}">
-                    <button type="submit" class="btn btn-primary">Search</button>
+    </div>
+
+    <!-- Feed -->
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            
+            <!-- Search Bar (Styled like a "What's on your mind?" or just a clean search) -->
+            <form action="/" method="get" class="mb-4">
+                <div class="input-group shadow-sm rounded-pill overflow-hidden bg-white border">
+                    <span class="input-group-text border-0 bg-white ps-3"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" name="search" class="form-control border-0 shadow-none" placeholder="Search artifacts..." value="{{ search or '' }}">
                 </div>
             </form>
-        </div>
-    </div>
 
-    <!-- Time Travel / Era Switcher -->
-    <div class="row mb-5">
-        <div class="col-12">
-            <div class="d-flex justify-content-center gap-2 flex-wrap">
-                <a href="/" class="btn {{ 'btn-dark' if not selected_era else 'btn-outline-dark' }} rounded-pill px-4">All Time</a>
-                <a href="/?era=Ancient" class="btn {{ 'btn-dark' if selected_era == 'Ancient' else 'btn-outline-dark' }} rounded-pill px-4">Ancient</a>
-                <a href="/?era=Medieval" class="btn {{ 'btn-dark' if selected_era == 'Medieval' else 'btn-outline-dark' }} rounded-pill px-4">Medieval</a>
-                <a href="/?era=Industrial" class="btn {{ 'btn-dark' if selected_era == 'Industrial' else 'btn-outline-dark' }} rounded-pill px-4">Industrial</a>
-                <a href="/?era=Modern" class="btn {{ 'btn-dark' if selected_era == 'Modern' else 'btn-outline-dark' }} rounded-pill px-4">Modern</a>
-                <a href="/?era=Future" class="btn {{ 'btn-dark' if selected_era == 'Future' else 'btn-outline-dark' }} rounded-pill px-4">Future</a>
+            {% for artifact in artifacts %}
+            <div class="card border-0 shadow-sm mb-4 rounded-4 overflow-hidden social-card">
+                <!-- Header -->
+                <div class="card-header bg-white border-0 p-3 d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed={{ artifact.creator.username }}" 
+                             class="rounded-circle border" width="40" height="40" alt="Avatar">
+                        <div>
+                            <h6 class="mb-0 fw-bold">{{ artifact.creator.username }}</h6>
+                            <small class="text-muted" style="font-size: 0.75rem;">{{ artifact.category }} • {{ artifact.era }}</small>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-dark p-0" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end border-0 shadow">
+                            <li><a class="dropdown-item" href="/artifact/{{ artifact.id }}">View Details</a></li>
+                            {% if user and user.id == artifact.creator_id %}
+                            <li>
+                                <form action="/artifacts/{{ artifact.id }}/delete" method="post" onsubmit="return confirm('Delete?');">
+                                    <button type="submit" class="dropdown-item text-danger">Delete</button>
+                                </form>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Media -->
+                <div class="position-relative bg-light" style="min-height: 300px;">
+                    <a href="/artifact/{{ artifact.id }}" class="d-block text-decoration-none">
+                        {% if artifact.media_type == 'image' %}
+                            <img src="{{ artifact.media_url }}" class="w-100" style="object-fit: cover; max-height: 600px;" alt="{{ artifact.title }}">
+                        {% elif artifact.media_type == '3d_model' %}
+                            <div class="ratio ratio-1x1 bg-light">
+                                <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                    <div class="text-center">
+                                        <i class="bi bi-box-seam display-1"></i>
+                                        <p class="mt-2 fw-bold">3D Model</p>
+                                        <span class="btn btn-sm btn-outline-dark rounded-pill">Tap to View</span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% elif artifact.media_type == 'video_url' %}
+                             <div class="ratio ratio-4x3 bg-dark">
+                                <iframe src="{{ artifact.media_url }}" allowfullscreen style="pointer-events: none;"></iframe>
+                            </div>
+                        {% else %}
+                             <div class="ratio ratio-4x3 bg-light d-flex align-items-center justify-content-center">
+                                <div class="text-center p-5">
+                                    <i class="bi bi-link-45deg display-1"></i>
+                                    <h4 class="mt-3">{{ artifact.title }}</h4>
+                                    <p class="text-muted">External Link</p>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </a>
+                </div>
+
+                <!-- Actions -->
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex gap-3 align-items-center">
+                            <!-- Like Button -->
+                            <button onclick="toggleLike({{ artifact.id }}, this)" class="btn p-0 border-0">
+                                {% if artifact.id in liked_artifact_ids %}
+                                    <i class="bi bi-heart-fill text-danger fs-4"></i>
+                                {% else %}
+                                    <i class="bi bi-heart text-dark fs-4"></i>
+                                {% endif %}
+                            </button>
+                            
+                            <!-- Comment Button (Focus input) -->
+                            <button class="btn p-0 border-0" onclick="document.getElementById('comment-input-{{ artifact.id }}').focus()">
+                                <i class="bi bi-chat text-dark fs-4"></i>
+                            </button>
+
+                            <!-- More Detail Button -->
+                            <a href="/artifact/{{ artifact.id }}" class="btn btn-light btn-sm rounded-pill px-3 fw-bold border">
+                                More Detail
+                            </a>
+                        </div>
+
+                        <!-- Collect/Save -->
+                        {% if user and user.id != artifact.creator_id %}
+                        <form action="/artifacts/{{ artifact.id }}/collect" method="post" class="d-inline">
+                            <button type="submit" class="btn p-0 border-0">
+                                <i class="bi bi-bookmark text-dark fs-4"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- Likes Count -->
+                    <div class="mb-2">
+                        <span class="fw-bold likes-count">{{ artifact.likes_count }} likes</span>
+                    </div>
+
+                    <!-- Caption -->
+                    <div class="mb-2">
+                        <span class="fw-bold me-1">{{ artifact.creator.username }}</span>
+                        <span>{{ artifact.short_description }}</span>
+                    </div>
+
+                    <!-- Tags -->
+                    {% if artifact.tags %}
+                    <div class="mb-2 text-primary small">
+                        {% for tag in artifact.tags.split(',') %}
+                            <span class="me-1">#{{ tag.strip()|replace(' ', '') }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Comments Preview -->
+                    {% if artifact.comments %}
+                        <div class="mb-2">
+                            <a href="/artifact/{{ artifact.id }}" class="text-muted small text-decoration-none">
+                                View all {{ artifact.comments|length }} comments
+                            </a>
+                            {% for comment in artifact.comments[-2:] %}
+                            <div class="small mt-1">
+                                <span class="fw-bold">{{ comment.user.username }}</span> {{ comment.text }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <div class="mt-1 mb-3">
+                        <small class="text-muted text-uppercase" style="font-size: 0.65rem;">{{ artifact.created_at.strftime('%B %d') }}</small>
+                    </div>
+
+                    <!-- Add Comment Form -->
+                    <form action="/artifacts/{{ artifact.id }}/comment" method="post" class="border-top pt-3">
+                        <input type="hidden" name="redirect_to" value="{{ request.url }}">
+                        <div class="input-group">
+                            <input type="text" id="comment-input-{{ artifact.id }}" name="text" class="form-control border-0 bg-transparent px-0" placeholder="Add a comment..." required style="box-shadow: none;">
+                            <button class="btn btn-link text-primary fw-bold text-decoration-none p-0" type="submit">Post</button>
+                        </div>
+                    </form>
+                </div>
             </div>
+            {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="bi bi-camera display-1 text-muted"></i>
+                </div>
+                <h3>No posts yet</h3>
+                <p class="text-muted">Be the first to share an artifact!</p>
+                <a href="/upload" class="btn btn-primary rounded-pill px-4">Create Post</a>
+            </div>
+            {% endfor %}
         </div>
     </div>
 </div>
+{% endblock %}
 
-<div class="artifact-grid">
-    {% for artifact in artifacts %}
-    <a href="/artifact/{{ artifact.id }}" class="artifact-item">
-        {% if artifact.media_type == 'image' %}
-            <div class="artifact-img-wrapper">
-                <img src="{{ artifact.media_url }}" class="artifact-img" alt="{{ artifact.title }}">
-            </div>
-        {% elif artifact.media_type == '3d_model' %}
-            <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
-                <div class="text-center">
-                    <i class="bi bi-box-seam display-4"></i>
-                    <p class="mt-2 fw-bold">3D Model</p>
-                </div>
-            </div>
-        {% elif artifact.media_type == 'video_url' %}
-             <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
-                <div class="text-center">
-                    <i class="bi bi-play-circle display-4"></i>
-                    <p class="mt-2 fw-bold">Video</p>
-                </div>
-            </div>
-        {% else %}
-             <div class="artifact-img-wrapper bg-light d-flex align-items-center justify-content-center text-muted">
-                <div class="text-center">
-                    <i class="bi bi-link-45deg display-4"></i>
-                    <p class="mt-2 fw-bold">Link</p>
-                </div>
-            </div>
-        {% endif %}
+{% block scripts %}
+<script>
+async function toggleLike(artifactId, btn) {
+    try {
+        const response = await fetch(`/artifacts/${artifactId}/like`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
         
-        <div class="artifact-content">
-            <div>
-                <div class="artifact-meta">{{ artifact.category }}</div>
-                <div class="artifact-title">{{ artifact.title }}</div>
-            </div>
-            <div class="mt-auto">
-                <p class="mb-0 fw-bold">View Exhibition &rarr;</p>
-            </div>
-        </div>
-    </a>
-    {% else %}
-    <div class="col-12 text-center py-5" style="grid-column: span 12;">
-        <h3>No artifacts found</h3>
-        <p>Try adjusting your search or upload something new!</p>
-    </div>
-    {% endfor %}
-</div>
+        if (response.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            const icon = btn.querySelector('i');
+            if (data.liked) {
+                icon.classList.remove('bi-heart', 'text-dark');
+                icon.classList.add('bi-heart-fill', 'text-danger');
+            } else {
+                icon.classList.remove('bi-heart-fill', 'text-danger');
+                icon.classList.add('bi-heart', 'text-dark');
+            }
+            
+            // Update count
+            const countSpan = btn.closest('.card-body').querySelector('.likes-count');
+            if (countSpan) {
+                countSpan.innerText = `${data.likes_count} likes`;
+            }
+        }
+    } catch (error) {
+        console.error('Error liking artifact:', error);
+    }
+}
+</script>
 {% endblock %}
