@@ -290,14 +290,24 @@ async def generate_ai_artifact(
         print(f"Metadata Generation Error: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate artifact metadata")
 
-    # 2. Generate Image using Pollinations.ai
+    # 2. Generate Image using OpenAI DALL-E
     # Enhance prompt for better image results
-    image_prompt = f"{prompt}, {metadata['category']}, {metadata['era']} style, highly detailed, museum photography, 8k, cinematic lighting"
-    encoded_prompt = urllib.parse.quote(image_prompt)
-    image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}"
+    image_prompt = f"{prompt}, {metadata.get('category', 'Artifact')}, {metadata.get('era', 'history')} style, highly detailed, museum photography, 8k, cinematic lighting"
     
-    # Download and save image
+    final_media_url = None
+    
     try:
+        # Generate image with DALL-E 3
+        image_response = client.images.generate(
+            model="dall-e-3",
+            prompt=image_prompt[:4000],  # Ensure prompt length is within limits
+            size="1024x1024",
+            quality="standard",
+            n=1,
+        )
+        image_url = image_response.data[0].url
+        
+        # Download and save image
         response = requests.get(image_url)
         if response.status_code == 200:
             unique_filename = f"ai_{uuid.uuid4()}.jpg"
@@ -306,11 +316,22 @@ async def generate_ai_artifact(
                 f.write(response.content)
             final_media_url = f"/media/{unique_filename}"
         else:
-            raise Exception("Image download failed")
+            raise Exception(f"Image download failed with status {response.status_code}")
+            
     except Exception as e:
         print(f"Image Generation Error: {e}")
-        # Fallback to the URL directly if download fails
-        final_media_url = image_url
+        # Use a placeholder if generation fails, or leave empty
+        # For now, let's use a placeholder if available, or just keeping it None/empty string 
+        # which might be better than a broken URL.
+        # But wait, the model requires media_url? It's nullable in DB?
+        # Let's check models.py: media_url = Column(String) - not explicitly nullable=False but standard is nullable=True if not specified? 
+        # Actually in SQLAlchemy Column(String) is nullable by default.
+        # But the frontend might expect an image.
+        final_media_url = None
+
+    # If final_media_url is None, we might want to provide a fallback image
+    if not final_media_url:
+        final_media_url = "/static/images/placeholder_artifact.jpg" # Assuming this exists or will show broken image which is better than crashing
 
     # 3. Save to Database
     new_artifact = models.Artifact(

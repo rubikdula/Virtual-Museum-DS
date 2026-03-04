@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 # SQLite database URL
 SQLALCHEMY_DATABASE_URL = "sqlite:///./virtual_museum_v2.db"
+print(f"DEBUG: Using database URL: {SQLALCHEMY_DATABASE_URL}")
 # For PostgreSQL, it would be: "postgresql://user:password@postgresserver/db"
 
 # Create the SQLAlchemy engine

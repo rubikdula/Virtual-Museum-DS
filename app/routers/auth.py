@@ -21,7 +21,7 @@ router = APIRouter(
 )
 
 # Password hashing
-pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto") 
+pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto") 
 
 # JWT Settings
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey") # Fallback for dev, but should be in .env
