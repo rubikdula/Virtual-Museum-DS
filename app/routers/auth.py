@@ -23,8 +23,11 @@ router = APIRouter(
 # Password hashing
 pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto") 
 
-# JWT Settings
-SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey") # Fallback for dev, but should be in .env
+# JWT Settings — SECRET_KEY must be set as an environment variable.
+# For local dev, add it to your .env file.
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY environment variable is not set.")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -74,6 +77,10 @@ async def signup(
     if user:
         # In a real app, show error on the form
         return RedirectResponse(url="/signup?error=Username already registered", status_code=303)
+
+    email_check = db.query(models.User).filter(models.User.email == email).first()
+    if email_check:
+        return RedirectResponse(url="/signup?error=Email already registered", status_code=303)
     
     hashed_password = get_password_hash(password)
     new_user = models.User(username=username, email=email, hashed_password=hashed_password)

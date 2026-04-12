@@ -1,15 +1,34 @@
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 from app import models
 from typing import List
 import json
+import os
 from .routers import auth, artifacts, pages, ai_guide, ai_enrichment, museum
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Virtual Museum")
+
+# --- CORS ---
+# Set ALLOWED_ORIGIN in Railway environment variables for your production frontend URL.
+# Defaults to "*" (open) which is fine while there is no separate frontend domain.
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+if _raw_origins == "*":
+    allowed_origins = ["*"]
+else:
+    allowed_origins = [o.strip() for o in _raw_origins.split(",")]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

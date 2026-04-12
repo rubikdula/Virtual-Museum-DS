@@ -1,7 +1,37 @@
+# Environment & secrets
 .env
+
+# Python
 __pycache__/
-*.pyc
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Database files
 *.db
 *.db-journal
-.venv/
+*.db-shm
+*.db-wal
+
+# Logs
 log.txt
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build / dist
+dist/
+build/
+*.egg-info/
